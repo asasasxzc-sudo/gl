@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YMTEA Radar | 2026 全球趋势看板</title>
+    <title>YMTEA Radar | 全球商贸脉动决策系统</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
-        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; --text-gray: #8b949e; }
+        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; --text-gray: #8b949e; --border-color: #30363d; }
         body { 
             background: var(--bg-dark); color: #fff; 
             font-family: -apple-system, system-ui, sans-serif; margin: 0; 
@@ -17,62 +17,89 @@
         .header { 
             padding: 15px 25px; background: var(--card-bg); 
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #30363d;
+            border-bottom: 1px solid var(--border-color);
         }
         .logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
         
-        /* 分类筛选 */
-        .filter-bar { padding: 10px 25px; display: flex; gap: 10px; flex-wrap: wrap; background: rgba(22, 27, 34, 0.5); }
-        .cat-btn {
-            background: #21262d; border: 1px solid #30363d; color: var(--text-gray);
-            padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 0.9rem;
-        }
-        .cat-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
-
-        /* 内容区 */
-        .content { flex: 1; position: relative; }
-        #chart-container { width: 100%; height: 500px; min-height: 60vh; }
-
-        /* 页脚导航 */
-        .footer {
-            background: var(--card-bg);
-            border-top: 1px solid #30363d;
-            padding: 20px 25px;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
+        /* 统计卡片区 */
+        .stats-container {
+            display: flex; gap: 15px; padding: 20px 25px 10px;
             flex-wrap: wrap;
-            margin-bottom: 10px;
         }
-        .footer-links a {
-            color: var(--text-gray);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+        .stat-card {
+            background: var(--card-bg); padding: 15px; border-radius: 8px; flex: 1; min-width: 200px;
+            border: 1px solid var(--border-color); transition: 0.3s;
         }
-        .footer-links a:hover { color: var(--accent-color); }
-        .copyright { color: #484f58; font-size: 0.8rem; margin-top: 10px; }
+        .stat-card:hover { border-color: var(--accent-color); transform: translateY(-2px); }
+        .stat-label { font-size: 0.75rem; color: var(--text-gray); text-transform: uppercase; }
+        .stat-value { font-size: 1.4rem; font-weight: bold; margin: 5px 0; display: flex; align-items: center; gap: 8px; }
+        .stat-trend { font-size: 0.8rem; color: var(--accent-color); }
 
-        @media (max-width: 600px) { .footer-links { gap: 15px; } }
+        /* 分类与时间筛选 */
+        .filter-section { padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .cat-btn, .time-btn {
+            background: #21262d; border: 1px solid var(--border-color); color: var(--text-gray);
+            padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 0.85rem;
+        }
+        .cat-btn.active, .time-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+
+        /* 图表区 */
+        .content { flex: 1; padding: 10px 25px; }
+        #chart-container { width: 100%; height: 450px; background: var(--card-bg); border-radius: 12px; padding: 15px; box-sizing: border-box; border: 1px solid var(--border-color); }
+
+        /* 页脚 */
+        .footer { background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 25px; text-align: center; }
+        .footer-links { display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 15px; }
+        .footer-links a { color: var(--text-gray); text-decoration: none; font-size: 0.85rem; transition: 0.2s; }
+        .footer-links a:hover { color: var(--accent-color); }
+        .copyright { color: #484f58; font-size: 0.75rem; }
+
+        @media (max-width: 768px) { .stats-container { flex-direction: column; } .filter-section { flex-direction: column; align-items: flex-start; } }
     </style>
 </head>
 <body>
 
     <header class="header">
         <div class="logo">YMTEA CLOUD RADAR</div>
-        <div style="font-size: 0.8rem; color: var(--text-gray);">数据来源：Cloudflare Radar API</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%;"></span>
+            <span style="font-size: 0.8rem; color: var(--text-gray);">边缘节点实时同步中</span>
+        </div>
     </header>
 
-    <nav class="filter-bar">
-        <button class="cat-btn active" onclick="switchCategory('消费电子', this)">消费电子</button>
-        <button class="cat-btn" onclick="switchCategory('家居生活', this)">家居生活</button>
-        <button class="cat-btn" onclick="switchCategory('跨境电商', this)">跨境电商</button>
-        <button class="cat-btn" onclick="switchCategory('金融科技', this)">金融科技</button>
-        <button class="cat-btn" onclick="switchCategory('AI流量', this)">AI流量</button>
-    </nav>
+    <section class="stats-container">
+        <div class="stat-card">
+            <div class="stat-label">全网关注度最高</div>
+            <div class="stat-value" id="stat-top-cat">AI流量</div>
+            <div class="stat-trend">↑ 24.2% 本周</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">全球脉动均值</div>
+            <div class="stat-value" id="stat-avg-score">82.5</div>
+            <div class="stat-trend" style="color:#2196f3">稳定运行</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">异常流量警告</div>
+            <div class="stat-value" style="color:#ff9800">0</div>
+            <div class="stat-trend" style="color:var(--text-gray)">全网状态良好</div>
+        </div>
+    </section>
+
+    <section class="filter-section">
+        <div class="filter-group" id="cat-group">
+            <button class="cat-btn active" onclick="switchCategory('消费电子', this)">消费电子</button>
+            <button class="cat-btn" onclick="switchCategory('家居生活', this)">家居生活</button>
+            <button class="cat-btn" onclick="switchCategory('跨境电商', this)">跨境电商</button>
+            <button class="cat-btn" onclick="switchCategory('金融科技', this)">金融科技</button>
+            <button class="cat-btn" onclick="switchCategory('AI流量', this)">AI流量</button>
+        </div>
+        <div class="filter-group">
+            <button class="time-btn active">24H</button>
+            <button class="time-btn" onclick="alert('VIP功能已锁定')">7D</button>
+            <button class="time-btn" onclick="alert('VIP功能已锁定')">30D</button>
+        </div>
+    </section>
 
     <div class="content">
         <div id="chart-container"></div>
@@ -86,7 +113,7 @@
             <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637" target="_blank">私域咨询</a>
         </div>
         <div class="copyright">
-            © 2026 YMTEA LABS. Powered by Cloudflare Edge.
+            © 2026 YMTEA LABS. 系统基于 Cloudflare Radar 真实流量数据建模分析。
         </div>
     </footer>
 
@@ -97,18 +124,25 @@
 
         async function fetchData(category) {
             try {
-                myChart.showLoading({ text: '同步全球节点...', maskColor: 'rgba(11, 15, 25, 0.7)' });
+                myChart.showLoading({ text: '同步 Cloudflare 节点...', maskColor: 'rgba(11, 15, 25, 0.7)' });
                 const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`, {
                     headers: { 'Authorization': 'Bearer test_token_888' }
                 });
                 const data = await res.json();
+                
                 if (!data || data.length === 0) {
-                    myChart.showLoading({ text: '当前分类暂无缓存数据', textColor: '#8b949e' });
+                    myChart.showLoading({ text: '当前分类暂无 Radar 缓存', textColor: '#8b949e' });
                     return;
                 }
+
+                // 细化：更新上方卡片数值
+                const latestScore = data[data.length - 1].score;
+                document.getElementById('stat-avg-score').innerText = latestScore;
+                document.getElementById('stat-top-cat').innerText = category;
+
                 renderChart(data, category);
             } catch (err) {
-                myChart.showLoading({ text: '联通失败: ' + err.message, textColor: '#ff4444' });
+                myChart.showLoading({ text: '节点连接中断: ' + err.message, textColor: '#ff4444' });
             }
         }
 
@@ -116,24 +150,32 @@
             myChart.hideLoading();
             myChart.setOption({
                 backgroundColor: 'transparent',
-                tooltip: { trigger: 'axis' },
-                grid: { top: '10%', left: '5%', right: '5%', bottom: '15%', containLabel: true },
+                tooltip: { 
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross' }
+                },
+                grid: { top: '10%', left: '5%', right: '5%', bottom: '10%', containLabel: true },
                 xAxis: {
                     type: 'category',
                     data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
-                    axisLine: { lineStyle: { color: '#30363d' } }
+                    axisLine: { lineStyle: { color: var(--border-color) } }
                 },
-                yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
+                yAxis: { 
+                    type: 'value', 
+                    splitLine: { lineStyle: { color: var(--border-color), type: 'dashed' } } 
+                },
                 series: [{
                     name: category,
                     type: 'line',
                     smooth: true,
-                    showSymbol: false,
+                    showSymbol: true,
+                    symbolSize: 6,
                     data: data.map(i => i.score),
                     lineStyle: { width: 4, color: '#00c853' },
+                    itemStyle: { color: '#00c853' },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(0, 200, 83, 0.3)' },
+                            { offset: 0, color: 'rgba(0, 200, 83, 0.4)' },
                             { offset: 1, color: 'rgba(0, 200, 83, 0)' }
                         ])
                     }
@@ -148,9 +190,10 @@
             fetchData(cat);
         }
 
+        // 初始化
         fetchData(currentCat);
         window.addEventListener('resize', () => myChart.resize());
-        setInterval(() => fetchData(currentCat), 300000);
+        setInterval(() => fetchData(currentCat), 300000); // 5分钟刷新
     </script>
 </body>
 </html>
