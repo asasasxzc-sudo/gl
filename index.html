@@ -3,225 +3,304 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YMTEA Radar Ultimate | 商业决策智能终端</title>
+    <title>YMTEA Radar | 智能看板</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; --text-gray: #8b949e; --border-color: #30363d; --vip-gold: #f1e05a; }
-        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-dark); color: #fff; font-family: 'Inter', 'PingFang SC', sans-serif; }
-        .app-container { display: flex; flex-direction: column; min-height: 100vh; max-width: 1200px; margin: 0 auto; }
-        .header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: rgba(22, 27, 34, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 1.2rem; font-weight: 900; color: var(--accent-color); cursor: pointer; letter-spacing: 2px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; padding: 20px; }
-        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); position: relative; }
-        .stat-card::before { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 4px; background: var(--accent-color); border-radius: 0 4px 4px 0; }
-        .filter-panel { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 15px; }
-        .filter-group-box { background: rgba(255,255,255,0.02); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); }
-        .filter-title { font-size: 0.75rem; color: var(--accent-color); font-weight: bold; margin-bottom: 12px; display: block; }
-        .btn-grid { display: flex; gap: 8px; flex-wrap: wrap; }
-        .btn { background: #21262d; border: 1px solid var(--border-color); color: var(--text-gray); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: 0.2s; }
-        .btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); box-shadow: 0 4px 12px rgba(0,200,83,0.3); }
-        .btn-vip { border-color: var(--vip-gold); color: var(--vip-gold); }
-        .main-content { flex: 1; padding: 0 20px; display: flex; flex-direction: column; gap: 20px; }
-        #chart-main { width: 100%; height: 450px; background: var(--card-bg); border-radius: 15px; border: 1px solid var(--border-color); }
-        .expert-card { background: linear-gradient(145deg, #1c2128, #161b22); padding: 20px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .expert-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .expert-badge { background: rgba(0, 200, 83, 0.1); color: var(--accent-color); padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
-        .share-btn { background: var(--vip-gold); color: #000; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
-        .footer { padding: 40px 20px; text-align: center; border-top: 1px solid var(--border-color); margin-top: 40px; color: var(--text-gray); font-size: 0.8rem; }
+        :root { --accent: #00c853; --bg: #0b0f19; --card: #161b22; --border: #30363d; --text: #8b949e; --gold: #f1e05a; --up: #ff3d00; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        .app { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100vh; }
+        
+        /* 顶部增强：毛玻璃与动态标题 */
+        header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(12px); z-index: 1000; }
+        .logo-wrap { display: flex; align-items: center; gap: 10px; }
+        .logo { font-size: 1.2rem; font-weight: 900; color: var(--accent); letter-spacing: 2px; cursor: pointer; }
+        .status-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* 商业看板网格 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; padding: 25px; }
+        .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 16px; position: relative; transition: 0.3s; }
+        .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .card-label { font-size: 0.75rem; color: var(--text); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; }
+        .card-val { font-size: 1.5rem; font-weight: 800; font-family: 'Monaco', monospace; }
+        .trend-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; margin-left: 10px; }
+
+        /* 筛选区优化 */
+        .controls { padding: 0 25px 25px; display: flex; flex-direction: column; gap: 20px; }
+        .group { background: rgba(255,255,255,0.02); padding: 18px; border-radius: 12px; border: 1px solid var(--border); }
+        .group-head { font-size: 0.75rem; color: var(--accent); font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .btn-flex { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        .btn { background: #21262d; border: 1px solid var(--border); color: #c9d1d9; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .btn:hover { border-color: var(--accent); }
+        .btn.active { background: var(--accent); color: #000; font-weight: bold; border-color: var(--accent); box-shadow: 0 0 15px rgba(0,200,83,0.3); }
+        .btn-gold { color: var(--gold); border-color: var(--gold); }
+        .btn-gold.active { background: var(--gold); color: #000; }
+
+        /* 图表区 */
+        .visual { padding: 0 25px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+        #main-chart { width: 100%; height: 480px; background: var(--card); border-radius: 20px; border: 1px solid var(--border); box-shadow: inset 0 0 20px rgba(0,0,0,0.2); }
+        
+        /* 专家智能分析卡 */
+        .ai-box { background: linear-gradient(135deg, #1c2128 0%, #0b0f19 100%); border: 1px solid var(--border); padding: 25px; border-radius: 20px; border-left: 6px solid var(--accent); margin-bottom: 30px; }
+        .ai-title { display: flex; align-items: center; gap: 8px; color: var(--accent); font-weight: bold; margin-bottom: 12px; }
+        .ai-content { font-size: 0.95rem; line-height: 1.8; color: #e6edf3; letter-spacing: 0.4px; }
+
+        .footer { padding: 40px 25px; border-top: 1px solid var(--border); text-align: center; color: var(--text); font-size: 0.8rem; }
+        .footer a { color: var(--text); text-decoration: none; margin: 0 15px; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } #main-chart { height: 350px; } }
     </style>
 </head>
 <body>
 
-<div class="app-container" id="capture-area">
-    <header class="header">
-        <div class="logo" id="admin-trigger">YMTEA RADAR ULTIMATE</div>
-        <div style="display:flex; gap:10px">
-            <button class="btn btn-vip" onclick="exportData()">CSV 导出</button>
-            <button class="share-btn" onclick="generatePoster()">生成快报</button>
+<div class="app" id="master-wrap">
+    <header>
+        <div class="logo-wrap">
+            <div class="status-dot"></div>
+            <div class="logo" id="admin-entrance">YMTEA RADAR MASTER</div>
+        </div>
+        <div style="display:flex; gap:12px">
+            <button class="btn btn-gold" onclick="capture()">生成快报</button>
+            <button class="btn btn-gold" id="export-lock" onclick="handleExport()">CSV 导出</button>
         </div>
     </header>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div style="font-size:0.7rem; color:var(--text-gray)">核心观测点</div>
-            <div id="stat-name" style="font-size:1.1rem; font-weight:bold; margin-top:5px">--</div>
+    <div class="grid">
+        <div class="card">
+            <div class="card-label">核心观测板块</div>
+            <div id="v-name" class="card-val">加载中...</div>
         </div>
-        <div class="stat-card">
-            <div style="font-size:0.7rem; color:var(--text-gray)">实时指数</div>
-            <div id="stat-val" style="font-size:1.1rem; font-weight:bold; margin-top:5px; color:var(--accent-color)">--</div>
+        <div class="card">
+            <div class="card-label">实时脉动分值</div>
+            <div style="display:flex; align-items:center">
+                <div id="v-score" class="card-val">--</div>
+                <div id="v-trend" class="trend-tag">--</div>
+            </div>
         </div>
-        <div class="stat-card">
-            <div style="font-size:0.7rem; color:var(--text-gray)">决策权限</div>
-            <div id="stat-vip" style="font-size:1.1rem; font-weight:bold; margin-top:5px; color:var(--vip-gold)">STANDARD</div>
+        <div class="card" style="border-left: 4px solid var(--gold)">
+            <div class="card-label">决策权限等级</div>
+            <div id="v-vip" class="card-val" style="color:var(--text)">STANDARD</div>
         </div>
     </div>
 
-    <div class="filter-panel">
-        <div class="filter-group-box">
-            <span class="filter-title">科技 · 工业 · 能源</span>
-            <div class="btn-grid">
-                <button class="btn active" onclick="sel('AI流量', this)">AI流量</button>
-                <button class="btn" onclick="sel('新能源', this)">新能源</button>
-                <button class="btn" onclick="sel('汽车配件', this)">汽车配件</button>
-                <button class="btn" onclick="sel('半导体', this)">半导体</button>
-                <button class="btn" onclick="sel('金融科技', this)">金融科技</button>
+    <div class="controls">
+        <div class="group">
+            <div class="group-head"><span>工业 · 能源 · 科技高地</span><span id="sync-indicator">正在同步数据...</span></div>
+            <div class="btn-flex">
+                <button class="btn active" onclick="toggleCat('AI流量', this)">AI流量</button>
+                <button class="btn" onclick="toggleCat('新能源', this)">新能源</button>
+                <button class="btn" onclick="toggleCat('汽车配件', this)">汽车配件</button>
+                <button class="btn" onclick="toggleCat('半导体', this)">半导体</button>
+                <button class="btn" onclick="toggleCat('金融科技', this)">金融科技</button>
             </div>
         </div>
-        <div class="filter-group-box">
-            <span class="filter-title">消费 · 零售 · 跨境</span>
-            <div class="btn-grid">
-                <button class="btn" onclick="sel('茶+咖啡', this)">茶+咖啡</button>
-                <button class="btn" onclick="sel('服装鞋帽', this)">服装鞋帽</button>
-                <button class="btn" onclick="sel('百货零售', this)">百货零售</button>
-                <button class="btn" onclick="sel('餐饮娱乐', this)">餐饮娱乐</button>
-                <button class="btn" onclick="sel('母婴用品', this)">母婴用品</button>
-                <button class="btn" onclick="sel('跨境电商', this)">跨境电商</button>
+        
+        <div class="group">
+            <div class="group-head"><span>生活消费 · 零售 · 跨境</span></div>
+            <div class="btn-flex">
+                <button class="btn" onclick="toggleCat('茶+咖啡', this)">茶+咖啡</button>
+                <button class="btn" onclick="toggleCat('服装鞋帽', this)">服装鞋帽</button>
+                <button class="btn" onclick="toggleCat('餐饮娱乐', this)">餐饮娱乐</button>
+                <button class="btn" onclick="toggleCat('百货零售', this)">百货零售</button>
+                <button class="btn" onclick="toggleCat('母婴用品', this)">母婴用品</button>
+                <button class="btn" onclick="toggleCat('跨境电商', this)">跨境电商</button>
             </div>
         </div>
-        <div class="filter-group-box">
-            <span class="filter-title">装修 · 基建 · 电子</span>
-            <div class="btn-grid">
-                <button class="btn" onclick="sel('装饰装修', this)">装饰装修</button>
-                <button class="btn" onclick="sel('建材', this)">建材</button>
-                <button class="btn" onclick="sel('消费电子', this)">消费电子</button>
+
+        <div class="group">
+            <div class="group-head"><span>装饰装修 · 基建 · 电子</span></div>
+            <div class="btn-flex">
+                <button class="btn" onclick="toggleCat('装饰装修', this)">装饰装修</button>
+                <button class="btn" onclick="toggleCat('建材', this)">建材</button>
+                <button class="btn" onclick="toggleCat('消费电子', this)">消费电子</button>
             </div>
         </div>
+
         <div style="display:flex; justify-content:space-between; align-items:center">
-            <div class="btn-grid">
-                <button class="btn active">24H 实时</button>
-                <button class="btn btn-vip" onclick="checkVip('7D历史趋势')">7D 趋势 (VIP)</button>
+            <div class="btn-flex">
+                <button class="btn active">24H 实时对比</button>
+                <button class="btn btn-gold" onclick="vipCheck('7D 历史深度分析')">7D 趋势 (VIP)</button>
             </div>
-            <div id="sync-time" style="font-size:0.7rem; color:var(--text-gray)">上次同步: 刚才</div>
+            <div style="font-size:0.7rem; color:var(--text)">每 15 分钟自动同步全局节点</div>
         </div>
     </div>
 
-    <div class="main-content">
-        <div id="chart-main"></div>
-        <div class="expert-card">
-            <div class="expert-header">
-                <span class="expert-badge">YMTEA 商业大脑 AI 分析</span>
-                <span style="font-size:0.7rem; color:var(--text-gray)">NO. 2026-0414</span>
+    <div class="visual">
+        <div id="main-chart"></div>
+        <div class="ai-box">
+            <div class="ai-title">🛡️ YMTEA 商业决策智能分析</div>
+            <div id="ai-text" class="ai-content">
+                正在通过云茗荟边缘节点进行多维数据交叉比对，请保持关注...
             </div>
-            <div id="expert-text" style="font-size:0.9rem; line-height:1.6; color:#e6edf3">正在分析数据脉动...</div>
         </div>
     </div>
 
     <footer class="footer">
-        <div style="margin-bottom:15px; display:flex; justify-content:center; gap:20px">
-            <a href="https://ymtea.club" style="color:var(--text-gray); text-decoration:none">官网</a>
-            <a href="https://www.ymtea.club/bbs/" style="color:var(--text-gray); text-decoration:none">研报库</a>
-            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637" style="color:var(--text-gray); text-decoration:none">联系专家</a>
+        <div style="margin-bottom:20px">
+            <a href="https://ymtea.club">官方网站</a>
+            <a href="https://www.ymtea.club/bbs/">情报论坛</a>
+            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637">商业授权</a>
         </div>
-        <div>© 2026 YMTEA LABS | 全球商道脉动实时决策终端</div>
+        <div style="opacity:0.6">© 2026 YMTEA LABS | 全球商贸脉动决策支持系统</div>
+        <div style="font-size:0.6rem; margin-top:10px; opacity:0.3">数据来源：边缘计算节点及 D1 商业库，仅供参考。</div>
     </footer>
 </div>
 
 <script>
-    const chart = echarts.init(document.getElementById('chart-main'), 'dark');
-    let cats = ['AI流量'];
-    let isVip = localStorage.getItem('ymtea_vip') === 'true';
+    const chart = echarts.init(document.getElementById('main-chart'), 'dark');
+    let activeCats = ['AI流量'];
+    let isVip = localStorage.getItem('ymtea_vip_status') === 'true';
+    let cache = JSON.parse(localStorage.getItem('ymtea_data_cache') || '{}');
 
-    document.getElementById('admin-trigger').onclick = () => {
-        const key = prompt("请输入商业授权码:");
-        if(key === 'ymtea888') {
-            isVip = true;
-            localStorage.setItem('ymtea_vip', 'true');
-            location.reload();
+    // 1. 管理员静默解锁
+    let clickCount = 0;
+    document.getElementById('admin-entrance').onclick = () => {
+        if(++clickCount >= 5) {
+            const key = prompt("请输入商业节点密钥:");
+            if(key === 'ymtea888') {
+                isVip = true;
+                localStorage.setItem('ymtea_vip_status', 'true');
+                location.reload();
+            }
+            clickCount = 0;
         }
     };
 
-    function sel(name, btn) {
-        if(cats.includes(name)) {
-            if(cats.length > 1) {
-                cats = cats.filter(c => c !== name);
-                btn.classList.remove('active');
+    function toggleCat(name, dom) {
+        if(activeCats.includes(name)) {
+            if(activeCats.length > 1) {
+                activeCats = activeCats.filter(c => c !== name);
+                dom.classList.remove('active');
             }
         } else {
-            cats.push(name);
-            btn.classList.add('active');
+            activeCats.push(name);
+            dom.classList.add('active');
         }
-        update();
+        sync();
     }
 
-    async function update() {
-        chart.showLoading({ text: '', color: '#00c853', maskColor: 'rgba(0,0,0,0.5)' });
+    async function sync() {
+        document.getElementById('sync-indicator').innerText = "正在同步边缘节点...";
+        chart.showLoading({ text: '', color: '#00c853', maskColor: 'rgba(11, 15, 25, 0.6)' });
+        
         try {
-            const reqs = cats.map(c => fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(c)}`).then(r => r.json()));
-            const res = await Promise.all(reqs);
-            render(res);
-        } catch(e) {
-            document.getElementById('expert-text').innerText = "网络连接异常，请检查 Worker 接口状态。";
+            const tasks = activeCats.map(c => 
+                fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(c)}`).then(r => r.json())
+            );
+            const results = await Promise.all(tasks);
+            
+            // 更新缓存
+            results.forEach((r, i) => { cache[activeCats[i]] = r; });
+            localStorage.setItem('ymtea_data_cache', JSON.stringify(cache));
+            
+            render(results);
+            document.getElementById('sync-indicator').innerText = "已与全球同步";
+        } catch (e) {
+            console.error("同步失败，调取本地缓存数据");
+            const cached = activeCats.map(c => cache[c]).filter(Boolean);
+            if(cached.length > 0) render(cached);
+            document.getElementById('sync-indicator').innerText = "离线预览模式";
         }
     }
 
     function render(results) {
         chart.hideLoading();
         let series = [];
-        let times = [];
+        let timeLabels = [];
         
         results.forEach((r, idx) => {
-            const d = r.data || []; 
-            if (d.length === 0) return;
+            const raw = r.data || [];
+            if(raw.length === 0) return;
 
-            if (idx === 0) {
-                times = d.map(v => {
-                    const parts = v.timestamp.includes('T') ? v.timestamp.split('T') : v.timestamp.split(' ');
+            if(idx === 0) {
+                timeLabels = raw.map(v => {
+                    const t = v.timestamp;
+                    const parts = t.includes('T') ? t.split('T') : t.split(' ');
                     return parts[1] ? parts[1].slice(0, 5) : '--:--';
                 });
             }
-            
+
             series.push({
-                name: cats[idx],
+                name: activeCats[idx],
                 type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
-                areaStyle: { opacity: 0.1 },
-                data: d.map(v => v.score)
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: 'rgba(0,200,83,0.3)'},
+                        {offset: 1, color: 'rgba(0,200,83,0)'}
+                    ])
+                },
+                data: raw.map(v => v.score)
             });
         });
 
-        if (series.length > 0) {
-            const mainData = results[0].data || [];
-            const last = mainData[mainData.length - 1].score;
-            const prev = mainData[mainData.length - 2] ? mainData[mainData.length - 2].score : last;
-            const trend = (((last - prev) / prev) * 100).toFixed(2);
+        // 核心分析
+        if(results.length > 0 && (results[0].data || []).length > 0) {
+            const data = results[0].data || [];
+            const cur = data[data.length-1].score;
+            const pre = data[data.length-2] ? data[data.length-2].score : cur;
+            const diff = (((cur - pre)/pre)*100).toFixed(2);
+            
+            // 更新看板文字
+            document.getElementById('v-name').innerText = activeCats.join(' / ');
+            document.getElementById('v-score').innerText = cur.toFixed(2);
+            document.getElementById('v-vip').innerText = isVip ? "VIP PRO" : "STANDARD";
+            
+            const trendDom = document.getElementById('v-trend');
+            trendDom.innerText = `${diff > 0 ? '↑' : '↓'} ${Math.abs(diff)}%`;
+            trendDom.style.background = diff > 0 ? 'rgba(255,61,0,0.2)' : 'rgba(0,200,83,0.2)';
+            trendDom.style.color = diff > 0 ? '#ff3d00' : '#00c853';
 
-            document.getElementById('stat-name').innerText = cats.join(' + ');
-            document.getElementById('stat-val').innerText = last.toFixed(2);
-            document.getElementById('stat-vip').innerText = isVip ? "VIP PRO" : "STANDARD";
-            document.getElementById('sync-time').innerText = `上次同步: ${new Date().toLocaleTimeString()}`;
+            // 动态标题
+            document.title = `[${cur.toFixed(1)}] ${activeCats[0]} | YMTEA Radar`;
 
-            let advice = trend >= 0 ? "该品类处于上升通道，建议关注。" : "近期出现小幅波动，建议稳健观察。";
-            document.getElementById('expert-text').innerText = `【${cats[0]}】监测：当前分值${last}，较上周期${trend >= 0 ? '增长':'回撤'}${Math.abs(trend)}%。${advice}`;
-
-            chart.setOption({
-                tooltip: { trigger: 'axis' },
-                legend: { top: 10 },
-                grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-                dataZoom: [{ type: 'slider', height: 20, bottom: 5 }],
-                xAxis: { type: 'category', data: times, boundaryGap: false },
-                yAxis: { type: 'value' },
-                series: series
-            }, true);
+            // AI 简评逻辑增强
+            let advice = "";
+            if(diff > 5) advice = "检测到高频脉动，需求端正快速扩张，建议优先配置供应端资源。";
+            else if(diff < -5) advice = "指数出现回调，市场进入去库存周期，建议保持现金流稳健。";
+            else advice = "当前走势平稳，波动率在合理区间，建议按既定商业计划推进。";
+            
+            document.getElementById('ai-text').innerText = `【${activeCats[0]}】实时洞察：当前指数 ${cur.toFixed(2)}，较上一监测点${diff > 0 ? '上涨':'下跌'}${Math.abs(diff)}%。YMTEA 提示：${advice}`;
         }
+
+        chart.setOption({
+            tooltip: { trigger: 'axis', backgroundColor: '#161b22', borderColor: '#30363d', textStyle: { color: '#fff' } },
+            legend: { top: 0, textStyle: { color: '#8b949e' } },
+            grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+            dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 5, borderColor: 'transparent', fillerColor: 'rgba(0,200,83,0.1)' }],
+            xAxis: { type: 'category', data: timeLabels, boundaryGap: false, axisLine: { lineStyle: { color: '#30363d' } } },
+            yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed', color: '#30363d' } } },
+            series: series
+        }, true);
     }
 
-    function checkVip(msg) {
-        if(!isVip) alert(`🔒 ${msg} 属于 VIP 专属功能。`);
-        else alert(`开启 ${msg}...`);
+    function vipCheck(feature) {
+        if(!isVip) alert(`🔒 ${feature} 功能仅对 VIP PRO 商业伙伴开放。`);
+        else alert(`正在开启 ${feature} 深度报告...`);
     }
 
-    function generatePoster() {
-        html2canvas(document.querySelector("#capture-area"), { backgroundColor: "#0b0f19", scale: 2 }).then(canvas => {
+    function handleExport() {
+        if(!isVip) return vipCheck('数据导出');
+        alert("正在生成加密 CSV 商业报表...");
+    }
+
+    function capture() {
+        const btn = document.querySelector('.btn-gold');
+        btn.innerText = "生成中...";
+        html2canvas(document.querySelector("#master-wrap"), { backgroundColor: "#0b0f19", scale: 2 }).then(canvas => {
             const link = document.createElement('a');
-            link.download = `YMTEA_Report.png`;
+            link.download = `YMTEA_Report_${Date.now()}.png`;
             link.href = canvas.toDataURL();
             link.click();
+            btn.innerText = "生成快报";
         });
     }
 
-    function exportData() { if(!isVip) checkVip('导出'); else alert("导出中..."); }
-
-    update();
+    // 自动刷新与初始化
+    sync();
+    setInterval(sync, 15 * 60 * 1000); // 15分钟自动同步一次
     window.onresize = () => chart.resize();
 </script>
 </body>
