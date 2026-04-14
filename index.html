@@ -24,8 +24,11 @@
 
         async function fetchData() {
             // 替换为你部署后的 Worker 链接
-            const res = await fetch('https://gl.asasasxzc.workers.dev');
-            const data = await res.json();
+            const res = await fetch('https://gl.asasasxzc.workers.dev', {
+    headers: {
+        'Authorization': 'Bearer test_token_888' // 替换为你 KV 中存入的有效 Token
+    }
+});
             
             const option = {
                 backgroundColor: 'transparent',
