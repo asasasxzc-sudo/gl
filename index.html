@@ -1,102 +1,187 @@
-<script>
-    const chartDom = document.getElementById('chart-container');
-    const myChart = echarts.init(chartDom, 'dark');
-    let currentCat = 'AI流量';
-    let clickCount = 0; // 用于记录 Logo 点击次数
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YMTEA Radar | 全球商贸脉动决策系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; --text-gray: #8b949e; --border-color: #30363d; }
+        
+        /* 强制确保 body 撑开，防止白屏 */
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-dark); color: #fff; font-family: sans-serif; }
+        body { display: flex; flex-direction: column; }
 
-    // --- 隐藏管理功能：点击 Logo 5 次触发 ---
-    document.querySelector('.logo').onclick = function() {
-        clickCount++;
-        if (clickCount === 5) {
-            const password = prompt("请输入管理员暗号：");
-            if (password) {
-                const target = confirm("点击[确定]解锁全站VIP，点击[取消]恢复锁定") ? 1 : 0;
-                toggleVip(password, target);
-            }
-            clickCount = 0;
+        .header { padding: 15px 25px; background: var(--card-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+        .logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-color); cursor: pointer; user-select: none; }
+        
+        .stats-container { display: flex; gap: 15px; padding: 20px 25px; flex-wrap: wrap; }
+        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; flex: 1; min-width: 180px; border: 1px solid var(--border-color); }
+
+        .filter-section { padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .filter-group { display: flex; gap: 8px; }
+
+        .cat-btn, .time-btn { 
+            background: #21262d; border: 1px solid var(--border-color); color: var(--text-gray); 
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: 0.3s; 
         }
-    };
+        .cat-btn.active, .time-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
 
-    async function toggleVip(pwd, targetStatus) {
-        try {
-            const res = await fetch(`https://gl.asasasxzc.workers.dev?action=manage_vip`, {
-                method: 'POST',
-                headers: { 'Admin-Token': pwd, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target: targetStatus })
-            });
-            const result = await res.json();
-            if (result.success) {
-                alert(result.isUnlocked ? "✅ VIP 功能已全球同步解锁！" : "🔒 VIP 功能已恢复锁定");
-                fetchData(currentCat); // 刷新当前状态
-            } else {
-                alert("❌ 暗号错误，权限拒绝");
-            }
-        } catch (e) { alert("通讯失败"); }
-    }
+        /* 图表容器必须有明确的高度，否则会显示白色 */
+        .content { flex: 1; padding: 0 25px 20px; display: flex; flex-direction: column; }
+        #chart-container { width: 100%; flex: 1; min-height: 400px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); }
 
-    async function fetchData(category) {
-        try {
-            myChart.showLoading({ text: '同步数据...', maskColor: 'rgba(11, 15, 25, 0.7)' });
-            const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`);
-            const result = await res.json();
-            
-            // 处理 VIP 锁定逻辑
-            const isUnlocked = result.vipUnlocked;
-            const vipBtns = document.querySelectorAll('.time-btn:not(:first-child)');
-            
-            vipBtns.forEach(btn => {
-                if (isUnlocked) {
-                    btn.style.opacity = "1";
-                    btn.onclick = () => {
-                        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        alert('已切换至历史深度数据模式');
-                    };
-                } else {
-                    btn.style.opacity = "0.4";
-                    btn.onclick = () => alert('💡 这是云茗荟 VIP 专属功能\n请联系私域咨询开通解锁。');
+        .footer { background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 20px; text-align: center; }
+        .footer-links { display: flex; justify-content: center; gap: 20px; margin-bottom: 10px; flex-wrap: wrap; }
+        .footer-links a { color: var(--text-gray); text-decoration: none; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo" id="admin-logo">YMTEA CLOUD RADAR</div>
+        <div style="font-size: 0.8rem; color: var(--text-gray);">● 边缘实时模式</div>
+    </header>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <div style="font-size: 0.7rem; color: var(--text-gray);">当前分类</div>
+            <div id="stat-top-cat" style="font-size: 1.2rem; font-weight: bold; margin-top:5px;">--</div>
+        </div>
+        <div class="stat-card">
+            <div style="font-size: 0.7rem; color: var(--text-gray);">脉动指数</div>
+            <div id="stat-avg-score" style="font-size: 1.2rem; font-weight: bold; margin-top:5px;">0</div>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-group">
+            <button class="cat-btn" onclick="switchCategory('消费电子', this)">消费电子</button>
+            <button class="cat-btn active" onclick="switchCategory('AI流量', this)">AI流量</button>
+        </div>
+        <div class="filter-group">
+            <button class="time-btn active">24H</button>
+            <button class="time-btn">7D (VIP)</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div id="chart-container"></div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="https://ymtea.club" target="_blank">官网首页</a>
+            <a href="https://www.ymtea.club/bbs/" target="_blank">论坛</a>
+            <a href="https://vip.ymtea.club" target="_blank">会员中心</a>
+            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637" target="_blank">私域咨询</a>
+        </div>
+        <div style="font-size: 0.7rem; color: #484f58;">© 2026 YMTEA LABS.</div>
+    </footer>
+
+    <script>
+        // 初始化 ECharts
+        const myChart = echarts.init(document.getElementById('chart-container'), 'dark');
+        let currentCat = 'AI流量';
+        let clickCount = 0;
+
+        // 1. 管理员隐藏入口
+        document.getElementById('admin-logo').addEventListener('click', () => {
+            clickCount++;
+            if (clickCount >= 5) {
+                const pwd = prompt("管理员密码:");
+                if (pwd) {
+                    const target = confirm("确定要切换全站 VIP 状态吗？") ? 1 : 0;
+                    handleVipToggle(pwd, target);
                 }
-            });
+                clickCount = 0;
+            }
+        });
 
-            renderChart(result.data, category);
-            document.getElementById('stat-avg-score').innerText = result.data.length > 0 ? result.data[result.data.length-1].score : 0;
-            document.getElementById('stat-top-cat').innerText = category;
-        } catch (err) {
-            myChart.showLoading({ text: '连接失败', textColor: '#ff4444' });
+        async function handleVipToggle(pwd, target) {
+            try {
+                const res = await fetch(`https://gl.asasasxzc.workers.dev?action=manage_vip`, {
+                    method: 'POST',
+                    headers: { 'Admin-Token': pwd, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: target })
+                });
+                const r = await res.json();
+                alert(r.success ? "操作成功！" : "失败: " + r.error);
+                fetchData(currentCat);
+            } catch(e) { alert("网络错误"); }
         }
-    }
 
-    // ... 保持 renderChart 和 switchCategory 函数不变 ...
-    function renderChart(data, category) {
-        myChart.hideLoading();
-        myChart.setOption({
-            backgroundColor: 'transparent',
-            tooltip: { trigger: 'axis' },
-            grid: { top: '10%', left: '5%', right: '5%', bottom: '15%', containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
-                axisLine: { lineStyle: { color: '#30363d' } }
-            },
-            yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
-            series: [{
-                name: category,
-                type: 'line',
-                smooth: true,
-                data: data.map(i => i.score),
-                lineStyle: { width: 4, color: '#00c853' },
-                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0, 200, 83, 0.4)' }, { offset: 1, color: 'rgba(0, 200, 83, 0)' }]) }
-            }]
-        }, true);
-    }
+        // 2. 核心抓取函数
+        async function fetchData(category) {
+            try {
+                myChart.showLoading({ text: '加载中...', maskColor: 'rgba(11, 15, 25, 0.8)' });
+                const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`);
+                const result = await res.json();
+                
+                // 处理后端返回的数据 (兼容带 vipUnlocked 的对象结构)
+                const chartData = Array.isArray(result) ? result : result.data;
+                const isUnlocked = result.vipUnlocked || false;
 
-    function switchCategory(cat, btn) {
-        currentCat = cat;
-        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        if(btn) btn.classList.add('active');
-        fetchData(cat);
-    }
+                if (!chartData || chartData.length === 0) {
+                    myChart.showLoading({ text: '暂无数据', textColor: '#8b949e' });
+                    return;
+                }
 
-    fetchData(currentCat);
-    window.addEventListener('resize', () => myChart.resize());
-</script>
+                // 更新 UI
+                document.getElementById('stat-top-cat').innerText = category;
+                document.getElementById('stat-avg-score').innerText = chartData[chartData.length-1].score;
+
+                // 更新 VIP 按钮状态
+                const vipBtn = document.querySelectorAll('.time-btn')[1];
+                if (isUnlocked) {
+                    vipBtn.style.opacity = "1";
+                    vipBtn.innerText = "7D (已解锁)";
+                    vipBtn.onclick = () => alert("已进入历史模式");
+                } else {
+                    vipBtn.style.opacity = "0.4";
+                    vipBtn.innerText = "7D (VIP)";
+                    vipBtn.onclick = () => alert("请联系管理员开通 VIP");
+                }
+
+                renderChart(chartData, category);
+            } catch (err) {
+                console.error(err);
+                myChart.showLoading({ text: '连接超时', textColor: '#ff4444' });
+            }
+        }
+
+        function renderChart(data, category) {
+            myChart.hideLoading();
+            myChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
+                    axisLine: { lineStyle: { color: '#30363d' } }
+                },
+                yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
+                series: [{
+                    name: category,
+                    type: 'line',
+                    smooth: true,
+                    data: data.map(i => i.score),
+                    lineStyle: { width: 4, color: '#00c853' },
+                    areaStyle: { color: 'rgba(0, 200, 83, 0.2)' }
+                }]
+            });
+        }
+
+        function switchCategory(cat, btn) {
+            currentCat = cat;
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            fetchData(cat);
+        }
+
+        // 启动执行
+        fetchData(currentCat);
+        window.addEventListener('resize', () => myChart.resize());
+    </script>
+</body>
+</html>
