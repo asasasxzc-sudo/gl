@@ -155,7 +155,7 @@
     let isVip = localStorage.getItem('ymtea_vip_status') === 'true';
     let cache = JSON.parse(localStorage.getItem('ymtea_data_cache') || '{}');
 
-    // 1. 管理员静默解锁
+    // 1. 管理员静默解锁 (点击 logo 5次)
     let clickCount = 0;
     document.getElementById('admin-entrance').onclick = () => {
         if(++clickCount >= 5) {
@@ -182,27 +182,50 @@
         sync();
     }
 
+    // 【核心修复】增加超时控制，解决手机端死循环加载问题
     async function sync() {
-        document.getElementById('sync-indicator').innerText = "正在同步边缘节点...";
+        const indicator = document.getElementById('sync-indicator');
+        indicator.innerText = "正在同步边缘节点...";
         chart.showLoading({ text: '', color: '#00c853', maskColor: 'rgba(11, 15, 25, 0.6)' });
         
+        // 手机端关键：8秒强制超时，防止网络卡死
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
         try {
             const tasks = activeCats.map(c => 
-                fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(c)}`).then(r => r.json())
+                fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(c)}`, {
+                    signal: controller.signal,
+                    cache: 'no-cache', // 强制刷新，防止手机浏览器读取错误的空缓存
+                    headers: { 'Pragma': 'no-cache' }
+                }).then(r => {
+                    if(!r.ok) throw new Error('网络响应异常');
+                    return r.json();
+                })
             );
             const results = await Promise.all(tasks);
+            clearTimeout(timeoutId); // 成功则清除超时
             
             // 更新缓存
             results.forEach((r, i) => { cache[activeCats[i]] = r; });
             localStorage.setItem('ymtea_data_cache', JSON.stringify(cache));
             
             render(results);
-            document.getElementById('sync-indicator').innerText = "已与全球同步";
+            indicator.innerText = "已与全球同步";
         } catch (e) {
-            console.error("同步失败，调取本地缓存数据");
+            clearTimeout(timeoutId);
+            console.warn("触发容错机制:", e.name === 'AbortError' ? '请求超时' : e);
+            
+            // 容错处理：网络不行立刻加载缓存数据，不让手机端转圈
             const cached = activeCats.map(c => cache[c]).filter(Boolean);
-            if(cached.length > 0) render(cached);
-            document.getElementById('sync-indicator').innerText = "离线预览模式";
+            if(cached.length > 0) {
+                render(cached);
+                indicator.innerText = "信号弱，已调取缓存";
+            } else {
+                chart.hideLoading();
+                indicator.innerText = "同步失败，请检查网络";
+                document.getElementById('ai-text').innerText = "当前环境网络连接受限，且无本地缓存，请刷新重试。";
+            }
         }
     }
 
@@ -236,33 +259,30 @@
             });
         });
 
-        // 核心分析
+        // 核心分析逻辑
         if(results.length > 0 && (results[0].data || []).length > 0) {
             const data = results[0].data || [];
             const cur = data[data.length-1].score;
             const pre = data[data.length-2] ? data[data.length-2].score : cur;
             const diff = (((cur - pre)/pre)*100).toFixed(2);
             
-            // 更新看板文字
             document.getElementById('v-name').innerText = activeCats.join(' / ');
             document.getElementById('v-score').innerText = cur.toFixed(2);
             document.getElementById('v-vip').innerText = isVip ? "VIP PRO" : "STANDARD";
             
             const trendDom = document.getElementById('v-trend');
-            trendDom.innerText = `${diff > 0 ? '↑' : '↓'} ${Math.abs(diff)}%`;
-            trendDom.style.background = diff > 0 ? 'rgba(255,61,0,0.2)' : 'rgba(0,200,83,0.2)';
-            trendDom.style.color = diff > 0 ? '#ff3d00' : '#00c853';
+            trendDom.innerText = `${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}%`;
+            trendDom.style.background = diff >= 0 ? 'rgba(255,61,0,0.2)' : 'rgba(0,200,83,0.2)';
+            trendDom.style.color = diff >= 0 ? '#ff3d00' : '#00c853';
 
-            // 动态标题
             document.title = `[${cur.toFixed(1)}] ${activeCats[0]} | YMTEA Radar`;
 
-            // AI 简评逻辑增强
             let advice = "";
             if(diff > 5) advice = "检测到高频脉动，需求端正快速扩张，建议优先配置供应端资源。";
             else if(diff < -5) advice = "指数出现回调，市场进入去库存周期，建议保持现金流稳健。";
             else advice = "当前走势平稳，波动率在合理区间，建议按既定商业计划推进。";
             
-            document.getElementById('ai-text').innerText = `【${activeCats[0]}】实时洞察：当前指数 ${cur.toFixed(2)}，较上一监测点${diff > 0 ? '上涨':'下跌'}${Math.abs(diff)}%。YMTEA 提示：${advice}`;
+            document.getElementById('ai-text').innerText = `【${activeCats[0]}】实时洞察：当前指数 ${cur.toFixed(2)}，较上一监测点${diff >= 0 ? '上涨':'下跌'}${Math.abs(diff)}%。YMTEA 提示：${advice}`;
         }
 
         chart.setOption({
@@ -288,19 +308,25 @@
 
     function capture() {
         const btn = document.querySelector('.btn-gold');
+        const originalText = btn.innerText;
         btn.innerText = "生成中...";
-        html2canvas(document.querySelector("#master-wrap"), { backgroundColor: "#0b0f19", scale: 2 }).then(canvas => {
+        // 手机端优化：增加 scale 防止模糊
+        html2canvas(document.querySelector("#master-wrap"), { 
+            backgroundColor: "#0b0f19", 
+            scale: 2,
+            useCORS: true 
+        }).then(canvas => {
             const link = document.createElement('a');
             link.download = `YMTEA_Report_${Date.now()}.png`;
             link.href = canvas.toDataURL();
             link.click();
-            btn.innerText = "生成快报";
+            btn.innerText = originalText;
         });
     }
 
-    // 自动刷新与初始化
+    // 初始同步
     sync();
-    setInterval(sync, 15 * 60 * 1000); // 15分钟自动同步一次
+    setInterval(sync, 15 * 60 * 1000); 
     window.onresize = () => chart.resize();
 </script>
 </body>
