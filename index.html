@@ -2,150 +2,103 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>YMTEA Radar | 智能看板</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" defer></script>
     <style>
         :root { --accent: #00c853; --bg: #0b0f19; --card: #161b22; --border: #30363d; --text: #8b949e; --gold: #f1e05a; --up: #ff3d00; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
         .app { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100vh; }
         
-        /* 顶部增强：毛玻璃与动态标题 */
-        header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(12px); z-index: 1000; }
+        header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(11, 15, 25, 0.85); backdrop-filter: blur(12px); z-index: 1000; }
         .logo-wrap { display: flex; align-items: center; gap: 10px; }
-        .logo { font-size: 1.2rem; font-weight: 900; color: var(--accent); letter-spacing: 2px; cursor: pointer; }
+        .logo { font-size: 1.1rem; font-weight: 900; color: var(--accent); letter-spacing: 2px; cursor: pointer; }
         .status-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* 商业看板网格 */
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; padding: 25px; }
-        .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 16px; position: relative; transition: 0.3s; }
-        .card:hover { border-color: var(--accent); transform: translateY(-2px); }
-        .card-label { font-size: 0.75rem; color: var(--text); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; }
-        .card-val { font-size: 1.5rem; font-weight: 800; font-family: 'Monaco', monospace; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; padding: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); padding: 18px; border-radius: 16px; transition: 0.3s; }
+        .card-label { font-size: 0.7rem; color: var(--text); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; }
+        .card-val { font-size: 1.3rem; font-weight: 800; font-family: 'Monaco', monospace; }
         .trend-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; margin-left: 10px; }
 
-        /* 筛选区优化 */
-        .controls { padding: 0 25px 25px; display: flex; flex-direction: column; gap: 20px; }
-        .group { background: rgba(255,255,255,0.02); padding: 18px; border-radius: 12px; border: 1px solid var(--border); }
-        .group-head { font-size: 0.75rem; color: var(--accent); font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; }
-        .btn-flex { display: flex; gap: 10px; flex-wrap: wrap; }
+        .controls { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 15px; }
+        .group { background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .group-head { font-size: 0.75rem; color: var(--accent); font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; }
+        .btn-flex { display: flex; gap: 8px; flex-wrap: wrap; }
         
-        .btn { background: #21262d; border: 1px solid var(--border); color: #c9d1d9; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
-        .btn:hover { border-color: var(--accent); }
-        .btn.active { background: var(--accent); color: #000; font-weight: bold; border-color: var(--accent); box-shadow: 0 0 15px rgba(0,200,83,0.3); }
+        .btn { background: #21262d; border: 1px solid var(--border); color: #c9d1d9; padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: 0.2s; }
+        .btn.active { background: var(--accent); color: #000; font-weight: bold; border-color: var(--accent); box-shadow: 0 0 10px rgba(0,200,83,0.2); }
         .btn-gold { color: var(--gold); border-color: var(--gold); }
-        .btn-gold.active { background: var(--gold); color: #000; }
 
-        /* 图表区 */
-        .visual { padding: 0 25px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
-        #main-chart { width: 100%; height: 480px; background: var(--card); border-radius: 20px; border: 1px solid var(--border); box-shadow: inset 0 0 20px rgba(0,0,0,0.2); }
+        #main-chart { width: 100%; height: 380px; background: var(--card); border-radius: 20px; border: 1px solid var(--border); margin: 0 20px; box-sizing: border-box; }
         
-        /* 专家智能分析卡 */
-        .ai-box { background: linear-gradient(135deg, #1c2128 0%, #0b0f19 100%); border: 1px solid var(--border); padding: 25px; border-radius: 20px; border-left: 6px solid var(--accent); margin-bottom: 30px; }
-        .ai-title { display: flex; align-items: center; gap: 8px; color: var(--accent); font-weight: bold; margin-bottom: 12px; }
-        .ai-content { font-size: 0.95rem; line-height: 1.8; color: #e6edf3; letter-spacing: 0.4px; }
+        .ai-box { background: #1c2128; border: 1px solid var(--border); padding: 20px; border-radius: 18px; border-left: 5px solid var(--accent); margin: 20px; }
+        .ai-title { color: var(--accent); font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; }
+        .ai-content { font-size: 0.85rem; line-height: 1.7; color: #e6edf3; }
 
-        .footer { padding: 40px 25px; border-top: 1px solid var(--border); text-align: center; color: var(--text); font-size: 0.8rem; }
-        .footer a { color: var(--text); text-decoration: none; margin: 0 15px; }
+        .footer { padding: 30px 20px; border-top: 1px solid var(--border); text-align: center; color: var(--text); font-size: 0.75rem; }
+        .footer a { color: var(--text); text-decoration: none; margin: 0 10px; border-bottom: 1px solid transparent; }
+        .footer a:hover { border-color: var(--accent); color: var(--accent); }
         
-        /* 响应式调整 */
-        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } #main-chart { height: 350px; } }
+        @media (max-width: 480px) { .grid { grid-template-columns: 1fr; padding: 15px; } #main-chart { height: 320px; } .card-val { font-size: 1.2rem; } }
     </style>
 </head>
 <body>
 
 <div class="app" id="master-wrap">
     <header>
-        <div class="logo-wrap">
-            <div class="status-dot"></div>
-            <div class="logo" id="admin-entrance">YMTEA RADAR MASTER</div>
-        </div>
-        <div style="display:flex; gap:12px">
-            <button class="btn btn-gold" onclick="capture()">生成快报</button>
-            <button class="btn btn-gold" id="export-lock" onclick="handleExport()">CSV 导出</button>
+        <div class="logo-wrap"><div class="status-dot"></div><div class="logo" id="admin-entrance">YMTEA RADAR MASTER</div></div>
+        <div style="display:flex; gap:8px">
+            <button class="btn btn-gold" onclick="capture()">快报</button>
+            <button class="btn btn-gold" onclick="handleExport()">CSV</button>
         </div>
     </header>
 
     <div class="grid">
-        <div class="card">
-            <div class="card-label">核心观测板块</div>
-            <div id="v-name" class="card-val">加载中...</div>
+        <div class="card"><div class="card-label">观测板块</div><div id="v-name" class="card-val">数据就绪中</div></div>
+        <div class="card"><div class="card-label">脉动分值</div>
+            <div style="display:flex; align-items:center"><div id="v-score" class="card-val">--</div><div id="v-trend" class="trend-tag">--</div></div>
         </div>
-        <div class="card">
-            <div class="card-label">实时脉动分值</div>
-            <div style="display:flex; align-items:center">
-                <div id="v-score" class="card-val">--</div>
-                <div id="v-trend" class="trend-tag">--</div>
-            </div>
-        </div>
-        <div class="card" style="border-left: 4px solid var(--gold)">
-            <div class="card-label">决策权限等级</div>
-            <div id="v-vip" class="card-val" style="color:var(--text)">STANDARD</div>
-        </div>
+        <div class="card" style="border-left: 4px solid var(--gold)"><div class="card-label">权限级别</div><div id="v-vip" class="card-val" style="color:var(--text); font-size:0.8rem">STANDARD</div></div>
     </div>
 
     <div class="controls">
         <div class="group">
-            <div class="group-head"><span>工业 · 能源 · 科技高地</span><span id="sync-indicator">正在同步数据...</span></div>
+            <div class="group-head"><span>行业板块实时对比</span><span id="sync-indicator">节点连接中...</span></div>
             <div class="btn-flex">
                 <button class="btn active" onclick="toggleCat('AI流量', this)">AI流量</button>
                 <button class="btn" onclick="toggleCat('新能源', this)">新能源</button>
                 <button class="btn" onclick="toggleCat('汽车配件', this)">汽车配件</button>
                 <button class="btn" onclick="toggleCat('半导体', this)">半导体</button>
                 <button class="btn" onclick="toggleCat('金融科技', this)">金融科技</button>
-            </div>
-        </div>
-        
-        <div class="group">
-            <div class="group-head"><span>生活消费 · 零售 · 跨境</span></div>
-            <div class="btn-flex">
                 <button class="btn" onclick="toggleCat('茶+咖啡', this)">茶+咖啡</button>
-                <button class="btn" onclick="toggleCat('服装鞋帽', this)">服装鞋帽</button>
-                <button class="btn" onclick="toggleCat('餐饮娱乐', this)">餐饮娱乐</button>
-                <button class="btn" onclick="toggleCat('百货零售', this)">百货零售</button>
-                <button class="btn" onclick="toggleCat('母婴用品', this)">母婴用品</button>
                 <button class="btn" onclick="toggleCat('跨境电商', this)">跨境电商</button>
-            </div>
-        </div>
-
-        <div class="group">
-            <div class="group-head"><span>装饰装修 · 基建 · 电子</span></div>
-            <div class="btn-flex">
                 <button class="btn" onclick="toggleCat('装饰装修', this)">装饰装修</button>
-                <button class="btn" onclick="toggleCat('建材', this)">建材</button>
                 <button class="btn" onclick="toggleCat('消费电子', this)">消费电子</button>
             </div>
         </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center">
-            <div class="btn-flex">
-                <button class="btn active">24H 实时对比</button>
-                <button class="btn btn-gold" onclick="vipCheck('7D 历史深度分析')">7D 趋势 (VIP)</button>
-            </div>
-            <div style="font-size:0.7rem; color:var(--text)">每 15 分钟自动同步全局节点</div>
+        <div style="display:flex; gap:10px">
+            <button class="btn active">24H 实时</button>
+            <button class="btn btn-gold" onclick="vipCheck('7D 历史分析')">7D 趋势 (VIP)</button>
         </div>
     </div>
 
-    <div class="visual">
-        <div id="main-chart"></div>
-        <div class="ai-box">
-            <div class="ai-title">🛡️ YMTEA 商业决策智能分析</div>
-            <div id="ai-text" class="ai-content">
-                正在通过云茗荟边缘节点进行多维数据交叉比对，请保持关注...
-            </div>
-        </div>
+    <div id="main-chart"></div>
+
+    <div class="ai-box">
+        <div class="ai-title">🛡️ 决策智能分析</div>
+        <div id="ai-text" class="ai-content">正在调取云茗荟边缘节点数据...</div>
     </div>
 
     <footer class="footer">
-        <div style="margin-bottom:20px">
+        <div style="margin-bottom:15px">
             <a href="https://ymtea.club">官方网站</a>
-            <a href="https://www.ymtea.club/bbs/">情报论坛</a>
-            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637">商业授权</a>
+            <a href="https://www.ymtea.club/bbs/">论坛情报</a>
+            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637">授权咨询</a>
         </div>
-        <div style="opacity:0.6">© 2026 YMTEA LABS | 全球商贸脉动决策支持系统</div>
-        <div style="font-size:0.6rem; margin-top:10px; opacity:0.3">数据来源：边缘计算节点及 D1 商业库，仅供参考。</div>
+        <div style="opacity:0.5">© 2026 YMTEA LABS | 商业支持系统</div>
     </footer>
 </div>
 
@@ -155,13 +108,12 @@
     let isVip = localStorage.getItem('ymtea_vip_status') === 'true';
     let cache = JSON.parse(localStorage.getItem('ymtea_data_cache') || '{}');
 
-    // 1. 管理员静默解锁 (点击 logo 5次)
+    // 1. 管理员静默解锁
     let clickCount = 0;
     document.getElementById('admin-entrance').onclick = () => {
         if(++clickCount >= 5) {
             const key = prompt("请输入商业节点密钥:");
             if(key === 'ymtea888') {
-                isVip = true;
                 localStorage.setItem('ymtea_vip_status', 'true');
                 location.reload();
             }
@@ -182,49 +134,37 @@
         sync();
     }
 
-    // 【核心修复】增加超时控制，解决手机端死循环加载问题
     async function sync() {
         const indicator = document.getElementById('sync-indicator');
-        indicator.innerText = "正在同步边缘节点...";
+        indicator.innerText = "数据同步中...";
         chart.showLoading({ text: '', color: '#00c853', maskColor: 'rgba(11, 15, 25, 0.6)' });
         
-        // 手机端关键：8秒强制超时，防止网络卡死
+        // 手机版关键：6秒请求限制，超时强制用缓存
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         try {
             const tasks = activeCats.map(c => 
                 fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(c)}`, {
                     signal: controller.signal,
-                    cache: 'no-cache', // 强制刷新，防止手机浏览器读取错误的空缓存
-                    headers: { 'Pragma': 'no-cache' }
-                }).then(r => {
-                    if(!r.ok) throw new Error('网络响应异常');
-                    return r.json();
-                })
+                    cache: 'no-cache'
+                }).then(r => r.json())
             );
             const results = await Promise.all(tasks);
-            clearTimeout(timeoutId); // 成功则清除超时
-            
-            // 更新缓存
+            clearTimeout(timeoutId);
+
             results.forEach((r, i) => { cache[activeCats[i]] = r; });
             localStorage.setItem('ymtea_data_cache', JSON.stringify(cache));
-            
             render(results);
-            indicator.innerText = "已与全球同步";
+            indicator.innerText = "已同步全局节点";
         } catch (e) {
             clearTimeout(timeoutId);
-            console.warn("触发容错机制:", e.name === 'AbortError' ? '请求超时' : e);
-            
-            // 容错处理：网络不行立刻加载缓存数据，不让手机端转圈
+            indicator.innerText = "信号弱，已调取本地";
             const cached = activeCats.map(c => cache[c]).filter(Boolean);
-            if(cached.length > 0) {
-                render(cached);
-                indicator.innerText = "信号弱，已调取缓存";
-            } else {
+            if(cached.length > 0) render(cached);
+            else {
                 chart.hideLoading();
-                indicator.innerText = "同步失败，请检查网络";
-                document.getElementById('ai-text').innerText = "当前环境网络连接受限，且无本地缓存，请刷新重试。";
+                document.getElementById('ai-text').innerText = "当前环境连接不稳定且无历史记录，请检查手机网络。";
             }
         }
     }
@@ -237,96 +177,49 @@
         results.forEach((r, idx) => {
             const raw = r.data || [];
             if(raw.length === 0) return;
-
             if(idx === 0) {
-                timeLabels = raw.map(v => {
-                    const t = v.timestamp;
-                    const parts = t.includes('T') ? t.split('T') : t.split(' ');
-                    return parts[1] ? parts[1].slice(0, 5) : '--:--';
-                });
+                timeLabels = raw.map(v => (v.timestamp.includes('T') ? v.timestamp.split('T')[1] : v.timestamp.split(' ')[1]).slice(0, 5));
             }
-
             series.push({
-                name: activeCats[idx],
-                type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: 'rgba(0,200,83,0.3)'},
-                        {offset: 1, color: 'rgba(0,200,83,0)'}
-                    ])
-                },
+                name: activeCats[idx], type: 'line', smooth: true, symbol: 'none',
+                areaStyle: { color: 'rgba(0,200,83,0.05)' },
                 data: raw.map(v => v.score)
             });
         });
 
-        // 核心分析逻辑
-        if(results.length > 0 && (results[0].data || []).length > 0) {
-            const data = results[0].data || [];
+        if(results.length > 0 && results[0].data.length > 0) {
+            const data = results[0].data;
             const cur = data[data.length-1].score;
             const pre = data[data.length-2] ? data[data.length-2].score : cur;
             const diff = (((cur - pre)/pre)*100).toFixed(2);
             
-            document.getElementById('v-name').innerText = activeCats.join(' / ');
+            document.getElementById('v-name').innerText = activeCats.join(' + ');
             document.getElementById('v-score').innerText = cur.toFixed(2);
             document.getElementById('v-vip').innerText = isVip ? "VIP PRO" : "STANDARD";
             
             const trendDom = document.getElementById('v-trend');
             trendDom.innerText = `${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}%`;
-            trendDom.style.background = diff >= 0 ? 'rgba(255,61,0,0.2)' : 'rgba(0,200,83,0.2)';
+            trendDom.style.background = diff >= 0 ? 'rgba(255,61,0,0.1)' : 'rgba(0,200,83,0.1)';
             trendDom.style.color = diff >= 0 ? '#ff3d00' : '#00c853';
 
-            document.title = `[${cur.toFixed(1)}] ${activeCats[0]} | YMTEA Radar`;
-
-            let advice = "";
-            if(diff > 5) advice = "检测到高频脉动，需求端正快速扩张，建议优先配置供应端资源。";
-            else if(diff < -5) advice = "指数出现回调，市场进入去库存周期，建议保持现金流稳健。";
-            else advice = "当前走势平稳，波动率在合理区间，建议按既定商业计划推进。";
-            
-            document.getElementById('ai-text').innerText = `【${activeCats[0]}】实时洞察：当前指数 ${cur.toFixed(2)}，较上一监测点${diff >= 0 ? '上涨':'下跌'}${Math.abs(diff)}%。YMTEA 提示：${advice}`;
+            document.getElementById('ai-text').innerText = `【${activeCats[0]}】实时评估：分值 ${cur.toFixed(2)}。趋势${diff >= 0 ? '上扬':'回调'}，建议关注相关供应链波动。`;
         }
 
         chart.setOption({
-            tooltip: { trigger: 'axis', backgroundColor: '#161b22', borderColor: '#30363d', textStyle: { color: '#fff' } },
-            legend: { top: 0, textStyle: { color: '#8b949e' } },
-            grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-            dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 5, borderColor: 'transparent', fillerColor: 'rgba(0,200,83,0.1)' }],
-            xAxis: { type: 'category', data: timeLabels, boundaryGap: false, axisLine: { lineStyle: { color: '#30363d' } } },
-            yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed', color: '#30363d' } } },
+            tooltip: { trigger: 'axis' },
+            legend: { top: 0, textStyle: { color: '#8b949e', fontSize: 10 } },
+            grid: { left: '3%', right: '5%', bottom: '10%', containLabel: true },
+            xAxis: { type: 'category', data: timeLabels, boundaryGap: false },
+            yAxis: { type: 'value' },
             series: series
         }, true);
     }
 
-    function vipCheck(feature) {
-        if(!isVip) alert(`🔒 ${feature} 功能仅对 VIP PRO 商业伙伴开放。`);
-        else alert(`正在开启 ${feature} 深度报告...`);
-    }
+    function vipCheck(f) { if(!isVip) alert("🔒 " + f + " 属于 VIP 专属。"); else alert("正在准备..."); }
+    function handleExport() { if(!isVip) vipCheck('CSV 导出'); else alert("生成中..."); }
+    function capture() { alert("正在截取快报..."); }
 
-    function handleExport() {
-        if(!isVip) return vipCheck('数据导出');
-        alert("正在生成加密 CSV 商业报表...");
-    }
-
-    function capture() {
-        const btn = document.querySelector('.btn-gold');
-        const originalText = btn.innerText;
-        btn.innerText = "生成中...";
-        // 手机端优化：增加 scale 防止模糊
-        html2canvas(document.querySelector("#master-wrap"), { 
-            backgroundColor: "#0b0f19", 
-            scale: 2,
-            useCORS: true 
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `YMTEA_Report_${Date.now()}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-            btn.innerText = originalText;
-        });
-    }
-
-    // 初始同步
     sync();
-    setInterval(sync, 15 * 60 * 1000); 
     window.onresize = () => chart.resize();
 </script>
 </body>
