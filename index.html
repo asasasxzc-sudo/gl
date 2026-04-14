@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YMTEA Radar | 2026 全球全品类趋势看板</title>
+    <title>YMTEA Radar | 2026 全球趋势看板</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
-        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; }
+        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; --text-gray: #8b949e; }
         body { 
             background: var(--bg-dark); color: #fff; 
             font-family: -apple-system, system-ui, sans-serif; margin: 0; 
+            display: flex; flex-direction: column; min-height: 100vh;
         }
-        /* 导航栏 */
+        
+        /* 顶部导航 */
         .header { 
             padding: 15px 25px; background: var(--card-bg); 
             display: flex; justify-content: space-between; align-items: center;
@@ -19,32 +21,52 @@
         }
         .logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
         
-        /* 分类筛选器 */
-        .filter-bar {
-            padding: 15px 25px; display: flex; gap: 10px; flex-wrap: wrap;
-            background: rgba(22, 27, 34, 0.5);
-        }
+        /* 分类筛选 */
+        .filter-bar { padding: 10px 25px; display: flex; gap: 10px; flex-wrap: wrap; background: rgba(22, 27, 34, 0.5); }
         .cat-btn {
-            background: #21262d; border: 1px solid #30363d; color: #8b949e;
-            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: 0.3s;
+            background: #21262d; border: 1px solid #30363d; color: var(--text-gray);
+            padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 0.9rem;
         }
-        .cat-btn:hover { border-color: var(--accent-color); color: #fff; }
-        .cat-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); box-shadow: 0 0 10px rgba(0,200,83,0.3); }
+        .cat-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
 
-        /* 图表容器 */
-        #chart-container { width: 100%; height: calc(100vh - 140px); min-height: 400px; }
-        
-        .loading-mask { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #8b949e; }
+        /* 内容区 */
+        .content { flex: 1; position: relative; }
+        #chart-container { width: 100%; height: 500px; min-height: 60vh; }
+
+        /* 页脚导航 */
+        .footer {
+            background: var(--card-bg);
+            border-top: 1px solid #30363d;
+            padding: 20px 25px;
+            text-align: center;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .footer-links a {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover { color: var(--accent-color); }
+        .copyright { color: #484f58; font-size: 0.8rem; margin-top: 10px; }
+
+        @media (max-width: 600px) { .footer-links { gap: 15px; } }
     </style>
 </head>
 <body>
 
     <header class="header">
         <div class="logo">YMTEA CLOUD RADAR</div>
-        <div style="font-size: 0.8rem; color: #8b949e;">数据来源：Cloudflare Radar API (Real-time)</div>
+        <div style="font-size: 0.8rem; color: var(--text-gray);">数据来源：Cloudflare Radar API</div>
     </header>
 
-    <nav class="filter-bar" id="category-filters">
+    <nav class="filter-bar">
         <button class="cat-btn active" onclick="switchCategory('消费电子', this)">消费电子</button>
         <button class="cat-btn" onclick="switchCategory('家居生活', this)">家居生活</button>
         <button class="cat-btn" onclick="switchCategory('跨境电商', this)">跨境电商</button>
@@ -52,58 +74,56 @@
         <button class="cat-btn" onclick="switchCategory('AI流量', this)">AI流量</button>
     </nav>
 
-    <div id="chart-container"></div>
+    <div class="content">
+        <div id="chart-container"></div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="https://ymtea.club" target="_blank">官网首页</a>
+            <a href="https://www.ymtea.club/bbs/" target="_blank">云茗荟论坛</a>
+            <a href="https://vip.ymtea.club" target="_blank">云茗荟链接</a>
+            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637" target="_blank">私域咨询</a>
+        </div>
+        <div class="copyright">
+            © 2026 YMTEA LABS. Powered by Cloudflare Edge.
+        </div>
+    </footer>
 
     <script>
         const chartDom = document.getElementById('chart-container');
         const myChart = echarts.init(chartDom, 'dark');
         let currentCat = '消费电子';
 
-        // 核心获取数据逻辑
         async function fetchData(category) {
             try {
-                myChart.showLoading({ text: '同步 Cloudflare 边缘数据...', maskColor: 'rgba(11, 15, 25, 0.7)' });
-                
-                // 请求时带上 category 参数，Worker 需根据此参数执行 D1 查询
+                myChart.showLoading({ text: '同步全球节点...', maskColor: 'rgba(11, 15, 25, 0.7)' });
                 const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`, {
                     headers: { 'Authorization': 'Bearer test_token_888' }
                 });
-
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-
                 if (!data || data.length === 0) {
-                    showEmpty();
+                    myChart.showLoading({ text: '当前分类暂无缓存数据', textColor: '#8b949e' });
                     return;
                 }
-
                 renderChart(data, category);
             } catch (err) {
-                console.error(err);
-                myChart.showLoading({ text: '无法联通 Cloudflare 节点: ' + err.message, textColor: '#ff4444' });
+                myChart.showLoading({ text: '联通失败: ' + err.message, textColor: '#ff4444' });
             }
         }
 
-        // 渲染图表
         function renderChart(data, category) {
             myChart.hideLoading();
-            const option = {
+            myChart.setOption({
                 backgroundColor: 'transparent',
-                tooltip: { 
-                    trigger: 'axis', 
-                    formatter: '{b}<br/><span style="color:#00c853">●</span> {a}: {c}%' 
-                },
-                grid: { top: '10%', left: '5%', right: '5%', bottom: '10%', containLabel: true },
+                tooltip: { trigger: 'axis' },
+                grid: { top: '10%', left: '5%', right: '5%', bottom: '15%', containLabel: true },
                 xAxis: {
                     type: 'category',
                     data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
                     axisLine: { lineStyle: { color: '#30363d' } }
                 },
-                yAxis: {
-                    type: 'value',
-                    name: '增长指数 (%)',
-                    splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } }
-                },
+                yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
                 series: [{
                     name: category,
                     type: 'line',
@@ -116,31 +136,21 @@
                             { offset: 0, color: 'rgba(0, 200, 83, 0.3)' },
                             { offset: 1, color: 'rgba(0, 200, 83, 0)' }
                         ])
-                    },
-                    emphasis: { lineStyle: { width: 5 } }
+                    }
                 }]
-            };
-            myChart.setOption(option, true); // true 表示不合并旧配置，完全刷新
+            }, true);
         }
 
-        // 切换分类逻辑
         function switchCategory(cat, btn) {
             currentCat = cat;
-            // 更新按钮样式
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            // 获取新数据
             fetchData(cat);
         }
 
-        function showEmpty() {
-            myChart.showLoading({ text: '当前分类暂无 Radar 缓存数据', textColor: '#8b949e', maskColor: 'rgba(11, 15, 25, 0.8)' });
-        }
-
-        // 初始化
         fetchData(currentCat);
         window.addEventListener('resize', () => myChart.resize());
-        setInterval(() => fetchData(currentCat), 60000 * 5); // 每 5 分钟同步一次
+        setInterval(() => fetchData(currentCat), 300000);
     </script>
 </body>
 </html>
