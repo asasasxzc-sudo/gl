@@ -1,44 +1,157 @@
-async function fetchData() {
-    try {
-        console.log("正在请求数据...");
-        const res = await fetch('https://gl.asasasxzc.workers.dev');
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Commerce Pulse | 2026 全球商贸脉动</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { 
+            background: #0b0f19; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; 
+            overflow: hidden;
+        }
+        .nav { 
+            padding: 20px; 
+            background: #161b22; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .brand { font-weight: bold; font-size: 1.2rem; letter-spacing: 1px; }
+        .status-tag { color: #00c853; font-size: 0.9rem; display: flex; align-items: center; }
+        .status-dot { 
+            width: 8px; height: 8px; background: #00c853; 
+            border-radius: 50%; margin-right: 8px; 
+            animation: blink 1.5s infinite; 
+        }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        #main-chart { width: 100vw; height: calc(100vh - 70px); }
+    </style>
+</head>
+<body>
+
+    <div class="nav">
+        <div class="brand">YMTEA LABS | 全球商贸脉动</div>
+        <div class="status-tag"><span class="status-dot"></span>LIVE DATA 2026</div>
+    </div>
+
+    <div id="main-chart"></div>
+
+    <script>
+        // 1. 初始化 ECharts 实例
+        const chartDom = document.getElementById('main-chart');
+        const myChart = echarts.init(chartDom, 'dark');
+
+        // 2. 配置与数据获取函数
+        async function fetchData() {
+            try {
+                console.log("正在从 Worker 获取实时数据...");
+                
+                // --- 注意：请确保下方 URL 是你部署的真实 Worker 地址 ---
+                const workerUrl = 'https://gl.asasasxzc.workers.dev'; 
+                
+                const res = await fetch(workerUrl, {
+                    headers: {
+                        // 如果你开启了 KV 校验，请确保 Token 正确
+                        'Authorization': 'Bearer test_token_888' 
+                    }
+                });
+
+                if (!res.ok) {
+                    throw new Error(`服务器响应异常: ${res.status}`);
+                }
+
+                const data = await res.json();
+                console.log("成功接收数据:", data);
+
+                // 如果数据库没数据，显示等待状态
+                if (!data || data.length === 0) {
+                    myChart.showLoading({ 
+                        text: '数据库暂无数据\n请在 D1 中执行 INSERT',
+                        color: '#00c853',
+                        textColor: '#fff',
+                        maskColor: 'rgba(11, 15, 25, 0.8)'
+                    });
+                    return;
+                }
+
+                myChart.hideLoading();
+
+                // 3. ECharts 配置项
+                const option = {
+                    backgroundColor: 'transparent',
+                    title: { 
+                        text: '全品类全球搜索热度趋势', 
+                        left: 'center', 
+                        top: 20,
+                        textStyle: { color: '#ffffff', fontWeight: 'normal' } 
+                    },
+                    tooltip: { 
+                        trigger: 'axis',
+                        backgroundColor: '#161b22',
+                        borderColor: '#30363d',
+                        textStyle: { color: '#fff' }
+                    },
+                    grid: { left: '5%', right: '5%', bottom: '10%', containLabel: true },
+                    xAxis: { 
+                        type: 'category', 
+                        // 处理时间戳显示格式 (例如: 14:30)
+                        data: data.map(i => (i.timestamp && i.timestamp.includes('T')) ? i.timestamp.split('T')[1].slice(0, 5) : 'N/A'),
+                        axisLine: { lineStyle: { color: '#30363d' } },
+                        axisLabel: { color: '#8b949e' }
+                    },
+                    yAxis: { 
+                        type: 'value',
+                        splitLine: { lineStyle: { color: '#30363d' } },
+                        axisLabel: { color: '#8b949e' }
+                    },
+                    series: [{
+                        name: '搜索指数',
+                        data: data.map(i => i.score),
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        lineStyle: { width: 3, color: '#00c853' },
+                        itemStyle: { color: '#00c853', borderColor: '#fff', borderWidth: 2 },
+                        areaStyle: { 
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(0, 200, 83, 0.4)' },
+                                { offset: 1, color: 'rgba(0, 200, 83, 0)' }
+                            ])
+                        }
+                    }]
+                };
+
+                myChart.setOption(option);
+
+            } catch (err) {
+                console.error("前端执行报错:", err);
+                myChart.showLoading({ 
+                    text: '加载失败: ' + err.message, 
+                    color: '#ff4444', 
+                    textColor: '#ff4444', 
+                    maskColor: 'rgba(11, 15, 25, 0.9)' 
+                });
+            }
+        }
+
+        // 4. 运行逻辑
+        fetchData(); // 立即执行一次
         
-        if (!res.ok) {
-            console.error("服务器响应异常:", res.status);
-            return;
-        }
+        // 每一分钟自动拉取一次新数据（实现自动运行可视化）
+        const timer = setInterval(fetchData, 60000);
 
-        const data = await res.json();
-        console.log("收到的原始数据:", data); // 在浏览器 F12 就能看到数据
+        // 5. 响应式布局：当浏览器窗口大小变化时，图表自动重绘
+        window.addEventListener('resize', () => {
+            myChart.resize();
+        });
 
-        if (!data || data.length === 0) {
-            console.warn("数据库里没数据，请先执行 INSERT！");
-            myChart.showLoading({ text: '数据库暂无数据' });
-            return;
-        }
-
-        myChart.hideLoading();
-
-        // 这里的映射逻辑要和你的 D1 字段名完全一致
-        const option = {
-            backgroundColor: 'transparent',
-            title: { text: '全球商贸脉动', left: 'center', textStyle: { color: '#00c853' } },
-            tooltip: { trigger: 'axis' },
-            xAxis: { 
-                type: 'category', 
-                data: data.map(i => i.timestamp.split('T')[1].slice(0, 5)) // 截取时间 12:00
-            },
-            yAxis: { type: 'value' },
-            series: [{
-                data: data.map(i => i.score),
-                type: 'line',
-                smooth: true,
-                itemStyle: { color: '#00c853' },
-                areaStyle: { opacity: 0.2 }
-            }]
-        };
-        myChart.setOption(option);
-    } catch (err) {
-        console.error("JS 运行报错:", err);
-    }
-}
+    </script>
+</body>
+</html>
