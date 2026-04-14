@@ -1,175 +1,102 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YMTEA Radar | 全球商贸脉动决策系统</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <style>
-        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; --text-gray: #8b949e; --border-color: #30363d; }
-        body { 
-            background: var(--bg-dark); color: #fff; 
-            font-family: -apple-system, system-ui, sans-serif; margin: 0; 
-            display: flex; flex-direction: column; min-height: 100vh;
-        }
-        .header { padding: 15px 25px; background: var(--card-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
-        .logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
-        
-        /* 统计卡片 */
-        .stats-container { display: flex; gap: 15px; padding: 20px 25px 10px; flex-wrap: wrap; }
-        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 8px; flex: 1; min-width: 200px; border: 1px solid var(--border-color); transition: 0.3s; }
-        .stat-card:hover { border-color: var(--accent-color); }
-        .stat-label { font-size: 0.75rem; color: var(--text-gray); text-transform: uppercase; }
-        .stat-value { font-size: 1.4rem; font-weight: bold; margin: 5px 0; display: flex; align-items: center; gap: 8px; }
-        .stat-trend { font-size: 0.8rem; color: var(--accent-color); }
+<script>
+    const chartDom = document.getElementById('chart-container');
+    const myChart = echarts.init(chartDom, 'dark');
+    let currentCat = 'AI流量';
+    let clickCount = 0; // 用于记录 Logo 点击次数
 
-        /* 筛选器 */
-        .filter-section { padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-        .filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
-        .cat-btn, .time-btn { background: #21262d; border: 1px solid var(--border-color); color: var(--text-gray); padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 0.85rem; }
-        .cat-btn.active, .time-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
-
-        /* 图表区 */
-        .content { flex: 1; padding: 10px 25px; }
-        #chart-container { width: 100%; height: 450px; background: var(--card-bg); border-radius: 12px; padding: 15px; box-sizing: border-box; border: 1px solid var(--border-color); }
-
-        /* 页脚 */
-        .footer { background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 25px; text-align: center; }
-        .footer-links { display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 15px; }
-        .footer-links a { color: var(--text-gray); text-decoration: none; font-size: 0.85rem; transition: 0.2s; }
-        .footer-links a:hover { color: var(--accent-color); }
-        .copyright { color: #484f58; font-size: 0.75rem; }
-    </style>
-</head>
-<body>
-
-    <header class="header">
-        <div class="logo">YMTEA CLOUD RADAR</div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%;"></span>
-            <span style="font-size: 0.8rem; color: var(--text-gray);">边缘节点实时同步</span>
-        </div>
-    </header>
-
-    <section class="stats-container">
-        <div class="stat-card">
-            <div class="stat-label">当前监控品类</div>
-            <div class="stat-value" id="stat-top-cat">载入中...</div>
-            <div class="stat-trend">Radar 实时模式</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">最新脉动指数</div>
-            <div class="stat-value" id="stat-avg-score">0</div>
-            <div class="stat-trend" style="color:#2196f3">数据来源于 D1</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">系统状态</div>
-            <div class="stat-value" style="color:var(--accent-color)">ONLINE</div>
-            <div class="stat-trend" style="color:var(--text-gray)">全网连接正常</div>
-        </div>
-    </section>
-
-    <section class="filter-section">
-        <div class="filter-group">
-            <button class="cat-btn" onclick="switchCategory('消费电子', this)">消费电子</button>
-            <button class="cat-btn" onclick="switchCategory('家居生活', this)">家居生活</button>
-            <button class="cat-btn" onclick="switchCategory('跨境电商', this)">跨境电商</button>
-            <button class="cat-btn" onclick="switchCategory('金融科技', this)">金融科技</button>
-            <button class="cat-btn active" onclick="switchCategory('AI流量', this)">AI流量</button>
-        </div>
-        <div class="filter-group">
-            <button class="time-btn active">实时(24H)</button>
-            <button class="time-btn" onclick="alert('云茗荟 VIP 专属功能')">历史(7D)</button>
-        </div>
-    </section>
-
-    <div class="content">
-        <div id="chart-container"></div>
-    </div>
-
-    <footer class="footer">
-        <div class="footer-links">
-            <a href="https://ymtea.club" target="_blank">官网首页</a>
-            <a href="https://www.ymtea.club/bbs/" target="_blank">云茗荟论坛</a>
-            <a href="https://vip.ymtea.club" target="_blank">云茗荟链接</a>
-            <a href="https://work.weixin.qq.com/ca/cawcedd71680d6b637" target="_blank">私域咨询</a>
-        </div>
-        <div class="copyright">© 2026 YMTEA LABS. 系统基于 Cloudflare Radar 真实流量数据建模分析。</div>
-    </footer>
-
-    <script>
-        const chartDom = document.getElementById('chart-container');
-        const myChart = echarts.init(chartDom, 'dark');
-        let currentCat = 'AI流量';
-
-        async function fetchData(category) {
-            try {
-                myChart.showLoading({ text: '同步中...', maskColor: 'rgba(11, 15, 25, 0.7)' });
-                
-                // 简化请求，移除 Header，确保和浏览器直接访问逻辑一致
-                const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`);
-                const data = await res.json();
-                
-                console.log("Received Data:", data);
-
-                if (!data || data.length === 0) {
-                    myChart.hideLoading();
-                    myChart.showLoading({ text: `[${category}] 暂无数据\n请在 D1 中检查`, textColor: '#8b949e', maskColor: 'transparent' });
-                    return;
-                }
-
-                // 更新上方卡片
-                const latest = data[data.length - 1];
-                document.getElementById('stat-avg-score').innerText = latest.score;
-                document.getElementById('stat-top-cat').innerText = category;
-
-                renderChart(data, category);
-            } catch (err) {
-                console.error("Fetch Error:", err);
-                myChart.showLoading({ text: '连接失败: ' + err.message, textColor: '#ff4444' });
+    // --- 隐藏管理功能：点击 Logo 5 次触发 ---
+    document.querySelector('.logo').onclick = function() {
+        clickCount++;
+        if (clickCount === 5) {
+            const password = prompt("请输入管理员暗号：");
+            if (password) {
+                const target = confirm("点击[确定]解锁全站VIP，点击[取消]恢复锁定") ? 1 : 0;
+                toggleVip(password, target);
             }
+            clickCount = 0;
         }
+    };
 
-        function renderChart(data, category) {
-            myChart.hideLoading();
-            const option = {
-                backgroundColor: 'transparent',
-                tooltip: { trigger: 'axis' },
-                grid: { top: '10%', left: '5%', right: '5%', bottom: '10%', containLabel: true },
-                xAxis: {
-                    type: 'category',
-                    data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
-                    axisLine: { lineStyle: { color: '#30363d' } }
-                },
-                yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
-                series: [{
-                    name: category,
-                    type: 'line',
-                    smooth: true,
-                    symbolSize: 8,
-                    data: data.map(i => i.score),
-                    lineStyle: { width: 4, color: '#00c853' },
-                    areaStyle: {
-                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(0, 200, 83, 0.4)' },
-                            { offset: 1, color: 'rgba(0, 200, 83, 0)' }
-                        ])
-                    }
-                }]
-            };
-            myChart.setOption(option, true);
+    async function toggleVip(pwd, targetStatus) {
+        try {
+            const res = await fetch(`https://gl.asasasxzc.workers.dev?action=manage_vip`, {
+                method: 'POST',
+                headers: { 'Admin-Token': pwd, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: targetStatus })
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert(result.isUnlocked ? "✅ VIP 功能已全球同步解锁！" : "🔒 VIP 功能已恢复锁定");
+                fetchData(currentCat); // 刷新当前状态
+            } else {
+                alert("❌ 暗号错误，权限拒绝");
+            }
+        } catch (e) { alert("通讯失败"); }
+    }
+
+    async function fetchData(category) {
+        try {
+            myChart.showLoading({ text: '同步数据...', maskColor: 'rgba(11, 15, 25, 0.7)' });
+            const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`);
+            const result = await res.json();
+            
+            // 处理 VIP 锁定逻辑
+            const isUnlocked = result.vipUnlocked;
+            const vipBtns = document.querySelectorAll('.time-btn:not(:first-child)');
+            
+            vipBtns.forEach(btn => {
+                if (isUnlocked) {
+                    btn.style.opacity = "1";
+                    btn.onclick = () => {
+                        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        alert('已切换至历史深度数据模式');
+                    };
+                } else {
+                    btn.style.opacity = "0.4";
+                    btn.onclick = () => alert('💡 这是云茗荟 VIP 专属功能\n请联系私域咨询开通解锁。');
+                }
+            });
+
+            renderChart(result.data, category);
+            document.getElementById('stat-avg-score').innerText = result.data.length > 0 ? result.data[result.data.length-1].score : 0;
+            document.getElementById('stat-top-cat').innerText = category;
+        } catch (err) {
+            myChart.showLoading({ text: '连接失败', textColor: '#ff4444' });
         }
+    }
 
-        function switchCategory(cat, btn) {
-            currentCat = cat;
-            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-            fetchData(cat);
-        }
+    // ... 保持 renderChart 和 switchCategory 函数不变 ...
+    function renderChart(data, category) {
+        myChart.hideLoading();
+        myChart.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis' },
+            grid: { top: '10%', left: '5%', right: '5%', bottom: '15%', containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
+                axisLine: { lineStyle: { color: '#30363d' } }
+            },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
+            series: [{
+                name: category,
+                type: 'line',
+                smooth: true,
+                data: data.map(i => i.score),
+                lineStyle: { width: 4, color: '#00c853' },
+                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0, 200, 83, 0.4)' }, { offset: 1, color: 'rgba(0, 200, 83, 0)' }]) }
+            }]
+        }, true);
+    }
 
-        // 初始化
-        fetchData(currentCat);
-        window.addEventListener('resize', () => myChart.resize());
-    </script>
-</body>
-</html>
+    function switchCategory(cat, btn) {
+        currentCat = cat;
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+        fetchData(cat);
+    }
+
+    fetchData(currentCat);
+    window.addEventListener('resize', () => myChart.resize());
+</script>
