@@ -11,30 +11,29 @@
         body { margin: 0; background: var(--bg); color: #fff; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
         .app { max-width: 1200px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
         
-        header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: rgba(11,15,25,0.9); position: sticky; top: 0; z-index: 999; }
+        header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: rgba(11,15,25,0.9); position: sticky; top: 0; z-index: 999; backdrop-filter: blur(10px); }
         .logo { font-size: 1.1rem; font-weight: 900; color: var(--accent); letter-spacing: 1px; cursor: pointer; }
         
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; }
         .card { background: var(--card); border: 1px solid var(--border); padding: 12px; border-radius: 10px; text-align: center; }
         .card-label { font-size: 0.65rem; color: var(--text); margin-bottom: 4px; }
-        .card-val { font-size: 1rem; font-weight: 800; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .card-val { font-size: 0.95rem; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; }
 
         .controls { padding: 0 15px 15px; }
         .group { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; }
-        .group-head { font-size: 0.75rem; color: var(--accent); font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; }
+        .group-head { font-size: 0.7rem; color: var(--accent); font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; }
         .btn-flex { display: flex; gap: 8px; flex-wrap: wrap; }
         
-        .btn { background: #21262d; border: 1px solid var(--border); color: #c9d1d9; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: 0.2s; }
+        .btn { background: #21262d; border: 1px solid var(--border); color: #c9d1d9; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: 0.2s; }
         .btn.active { background: var(--accent); color: #000; font-weight: bold; border-color: var(--accent); }
         .btn-gold { color: var(--gold); border-color: var(--gold); }
         .btn-gold.active { background: var(--gold); color: #000; }
 
-        .visual { padding: 0 15px; flex: 1; min-height: 350px; }
-        #main-chart { width: 100%; height: 100%; min-height: 350px; background: var(--card); border-radius: 15px; border: 1px solid var(--border); }
+        .visual { padding: 0 15px; flex: 1; }
+        #main-chart { width: 100%; height: 380px; background: var(--card); border-radius: 15px; border: 1px solid var(--border); }
         
-        .ai-box { background: #1c2128; border-left: 4px solid var(--accent); padding: 15px; border-radius: 8px; margin: 15px; font-size: 0.85rem; line-height: 1.6; }
-
-        .footer { padding: 30px 15px; text-align: center; color: var(--text); font-size: 0.75rem; border-top: 1px solid var(--border); }
+        .ai-box { background: #1c2128; border-left: 4px solid var(--accent); padding: 15px; border-radius: 8px; margin: 15px; font-size: 0.8rem; line-height: 1.6; }
+        .footer { padding: 20px 15px; text-align: center; color: var(--text); font-size: 0.7rem; border-top: 1px solid var(--border); }
     </style>
 </head>
 <body>
@@ -43,154 +42,169 @@
     <header>
         <div class="logo" id="admin-trigger">YMTEA RADAR MASTER</div>
         <div style="display:flex; gap:8px">
-            <button class="btn btn-gold" style="padding: 6px 10px;" onclick="capture()">快报</button>
-            <button class="btn btn-gold" style="padding: 6px 10px;" onclick="handleExport()">导出</button>
+            <button class="btn btn-gold" onclick="capture()">快报</button>
+            <button class="btn btn-gold" onclick="handleExport()">导出</button>
         </div>
     </header>
 
     <div class="grid">
-        <div class="card"><div class="card-label">观测点</div><div id="v-name" class="card-val">--</div></div>
+        <div class="card"><div class="card-label">观测板块</div><div id="v-name" class="card-val">--</div></div>
         <div class="card"><div class="card-label">实时指数</div><div id="v-score" class="card-val" style="color:var(--accent)">--</div></div>
         <div class="card"><div class="card-label">决策权限</div><div id="v-vip" class="card-val" style="color:var(--gold)">STANDARD</div></div>
     </div>
 
     <div class="controls">
         <div class="group">
-            <div class="group-head"><span>行业板块选择</span><span id="sync-status">待命</span></div>
+            <div class="group-head"><span>科技 · 工业 · 能源</span><span id="sync-status">待命</span></div>
             <div class="btn-flex">
-                <button class="btn active" onclick="selCat('AI流量', this)">AI流量</button>
-                <button class="btn" onclick="selCat('新能源', this)">新能源</button>
-                <button class="btn" onclick="selCat('汽车配件', this)">汽车配件</button>
-                <button class="btn" onclick="selCat('半导体', this)">半导体</button>
-                <button class="btn" onclick="selCat('金融科技', this)">金融科技</button>
-                <button class="btn" onclick="selCat('茶+咖啡', this)">茶+咖啡</button>
-                <button class="btn" onclick="selCat('跨境电商', this)">跨境电商</button>
-                </div>
+                <button class="btn active" onclick="toggleCat('AI流量', this)">AI流量</button>
+                <button class="btn" onclick="toggleCat('新能源', this)">新能源</button>
+                <button class="btn" onclick="toggleCat('汽车配件', this)">汽车配件</button>
+                <button class="btn" onclick="toggleCat('半导体', this)">半导体</button>
+                <button class="btn" onclick="toggleCat('金融科技', this)">金融科技</button>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-head"><span>生活 · 零售 · 跨境</span></div>
+            <div class="btn-flex">
+                <button class="btn" onclick="toggleCat('茶+咖啡', this)">茶+咖啡</button>
+                <button class="btn" onclick="toggleCat('服装鞋帽', this)">服装鞋帽</button>
+                <button class="btn" onclick="toggleCat('餐饮娱乐', this)">餐饮娱乐</button>
+                <button class="btn" onclick="toggleCat('百货零售', this)">百货零售</button>
+                <button class="btn" onclick="toggleCat('母婴用品', this)">母婴用品</button>
+                <button class="btn" onclick="toggleCat('跨境电商', this)">跨境电商</button>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-head"><span>基建 · 装修 · 电子</span></div>
+            <div class="btn-flex">
+                <button class="btn" onclick="toggleCat('装饰装修', this)">装饰装修</button>
+                <button class="btn" onclick="toggleCat('建材', this)">建材</button>
+                <button class="btn" onclick="toggleCat('消费电子', this)">消费电子</button>
+            </div>
         </div>
         
-        <div style="display:flex; justify-content:space-between; align-items:center; padding: 0 5px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
             <div class="btn-flex">
                 <button class="btn active" id="mode-24h" onclick="setMode('24H')">24H 实时</button>
                 <button class="btn btn-gold" id="mode-7d" onclick="setMode('7D')">7D 趋势 (VIP)</button>
             </div>
-            <div style="font-size:0.65rem; color:var(--text)">自动同步: ON</div>
+            <div style="font-size:0.6rem; color:var(--text)">节点同步中</div>
         </div>
     </div>
 
-    <div class="visual">
-        <div id="main-chart"></div>
-    </div>
-
-    <div class="ai-box" id="ai-text">正在初始化 YMTEA 决策引擎...</div>
-
-    <footer class="footer">
-        <div>© 2026 YMTEA LABS | <a href="https://ymtea.club" style="color:var(--text);text-decoration:none">官方网站</a></div>
-    </footer>
+    <div class="visual"><div id="main-chart"></div></div>
+    <div class="ai-box" id="ai-text">正在初始化分析引擎...</div>
+    <footer class="footer">© 2026 YMTEA LABS | <a href="https://ymtea.club" style="color:var(--text);text-decoration:none">官方网站</a></footer>
 </div>
 
 <script>
-    let activeCat = 'AI流量';
+    let activeCats = ['AI流量'];
     let currentMode = '24H';
     let isVip = localStorage.getItem('ymtea_vip') === 'true';
     let cache = JSON.parse(localStorage.getItem('ymtea_cache') || '{}');
     const chart = echarts.init(document.getElementById('main-chart'), 'dark');
 
-    // 1. VIP 激活逻辑
     document.getElementById('admin-trigger').onclick = () => {
         const pw = prompt("输入商业授权码:");
-        if(pw === 'ymtea888') {
-            localStorage.setItem('ymtea_vip', 'true');
-            location.reload();
-        }
+        if(pw === 'ymtea888') { localStorage.setItem('ymtea_vip', 'true'); location.reload(); }
     };
 
-    // 2. 核心同步逻辑 (手机端防卡死)
+    function toggleCat(name, btn) {
+        if(activeCats.includes(name)) {
+            if(activeCats.length > 1) {
+                activeCats = activeCats.filter(c => c !== name);
+                btn.classList.remove('active');
+            }
+        } else {
+            activeCats.push(name);
+            btn.classList.add('active');
+        }
+        sync();
+    }
+
     async function sync() {
         const status = document.getElementById('sync-status');
         status.innerText = "同步中...";
         chart.showLoading({ text: '', color: '#00c853', maskColor: 'rgba(11,15,25,0.7)' });
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000); // 手机端6秒不响应直接切缓存
+        const timeout = setTimeout(() => controller.abort(), 7000);
 
         try {
-            const api = `https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(activeCat)}&mode=${currentMode}`;
-            const resp = await fetch(api, { 
-                signal: controller.signal,
-                headers: { 'Cache-Control': 'no-cache' }
-            });
-            const result = await resp.json();
+            const tasks = activeCats.map(c => 
+                fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(c)}&mode=${currentMode}`, { signal: controller.signal })
+                .then(r => r.json())
+            );
+            const results = await Promise.all(tasks);
             clearTimeout(timeout);
 
-            cache[activeCat] = result;
+            results.forEach((r, i) => { cache[activeCats[i]] = r; });
             localStorage.setItem('ymtea_cache', JSON.stringify(cache));
-            render(result);
+            render(results);
             status.innerText = "已更新";
         } catch (e) {
             clearTimeout(timeout);
             status.innerText = "离线预览";
-            if(cache[activeCat]) render(cache[activeCat]);
-            else {
-                chart.hideLoading();
-                document.getElementById('ai-text').innerText = "网络异常，请检查手机数据连接。";
-            }
+            const cachedData = activeCats.map(c => cache[c]).filter(Boolean);
+            if(cachedData.length > 0) render(cachedData);
+            else chart.hideLoading();
         }
     }
 
-    function render(res) {
+    function render(results) {
         chart.hideLoading();
-        const data = res.data || [];
-        if(data.length === 0) return;
-
-        const times = data.map(v => {
-            const t = v.timestamp;
-            return (t.includes('T') ? t.split('T')[1] : t.split(' ')[1]).slice(0, 5);
+        let series = [];
+        let times = [];
+        
+        results.forEach((res, idx) => {
+            const data = res.data || [];
+            if(data.length === 0) return;
+            if(idx === 0) {
+                times = data.map(v => {
+                    const t = v.timestamp;
+                    return (t.includes('T') ? t.split('T')[1] : t.split(' ')[1]).slice(0, 5);
+                });
+            }
+            series.push({
+                name: activeCats[idx], type: 'line', smooth: true, symbol: 'none',
+                data: data.map(v => v.score)
+            });
         });
-        const scores = data.map(v => v.score);
-        const lastScore = scores[scores.length - 1];
 
-        document.getElementById('v-name').innerText = activeCat;
-        document.getElementById('v-score').innerText = lastScore.toFixed(2);
-        document.getElementById('v-vip').innerText = isVip ? "VIP PRO" : "STANDARD";
-        document.getElementById('ai-text').innerText = `【${activeCat}】${currentMode}分析：当前分值 ${lastScore.toFixed(2)}。系统评估行业活跃度处于正常区间。`;
+        if(results.length > 0) {
+            const firstData = results[0].data || [];
+            const last = firstData[firstData.length-1].score;
+            document.getElementById('v-name').innerText = activeCats.join('+');
+            document.getElementById('v-score').innerText = last.toFixed(2);
+            document.getElementById('v-vip').innerText = isVip ? "VIP PRO" : "STANDARD";
+            document.getElementById('ai-text').innerText = `【${activeCats[0]}】实时监测已就绪，多板块对比线已激活。`;
+        }
 
         chart.setOption({
             tooltip: { trigger: 'axis' },
-            grid: { top: '10%', left: '3%', right: '5%', bottom: '15%', containLabel: true },
+            legend: { top: 0, textStyle: { color: '#8b949e', fontSize: 10 } },
+            grid: { top: '15%', left: '3%', right: '5%', bottom: '10%', containLabel: true },
             xAxis: { type: 'category', data: times, boundaryGap: false },
             yAxis: { type: 'value', min: 'dataMin' },
             dataZoom: [{ type: 'inside' }],
-            series: [{
-                name: activeCat, type: 'line', smooth: true, symbol: 'none',
-                lineStyle: { color: '#00c853', width: 3 },
-                areaStyle: { color: 'rgba(0,200,83,0.1)' },
-                data: scores
-            }]
+            series: series
         }, true);
     }
 
-    function selCat(name, btn) {
-        activeCat = name;
-        document.querySelectorAll('.group .btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        sync();
-    }
-
     function setMode(mode) {
-        if(mode === '7D' && !isVip) {
-            alert("🔒 7D 历史趋势分析属于 VIP PRO 专属功能。");
-            return;
-        }
+        if(mode === '7D' && !isVip) { alert("🔒 7D 功能需 VIP 授权。"); return; }
         currentMode = mode;
         document.getElementById('mode-24h').classList.toggle('active', mode === '24H');
         document.getElementById('mode-7d').classList.toggle('active', mode === '7D');
         sync();
     }
 
-    function capture() { alert("正在截取商业快报..."); /* 逻辑同前 */ }
-    function handleExport() { if(!isVip) alert("🔒 导出功能需 VIP 授权。"); else alert("数据处理中..."); }
+    function capture() { alert("快报生成中..."); }
+    function handleExport() { if(!isVip) alert("🔒 导出需 VIP。"); else alert("处理中..."); }
 
-    // 初始化
     sync();
     window.onresize = () => chart.resize();
 </script>
