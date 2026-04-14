@@ -3,155 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Commerce Pulse | 2026 全球商贸脉动</title>
+    <title>YMTEA Radar | 2026 全球全品类趋势看板</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
+        :root { --accent-color: #00c853; --bg-dark: #0b0f19; --card-bg: #161b22; }
         body { 
-            background: #0b0f19; 
-            color: #fff; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            margin: 0; 
-            overflow: hidden;
+            background: var(--bg-dark); color: #fff; 
+            font-family: -apple-system, system-ui, sans-serif; margin: 0; 
         }
-        .nav { 
-            padding: 20px; 
-            background: #161b22; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
+        /* 导航栏 */
+        .header { 
+            padding: 15px 25px; background: var(--card-bg); 
+            display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid #30363d;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
-        .brand { font-weight: bold; font-size: 1.2rem; letter-spacing: 1px; }
-        .status-tag { color: #00c853; font-size: 0.9rem; display: flex; align-items: center; }
-        .status-dot { 
-            width: 8px; height: 8px; background: #00c853; 
-            border-radius: 50%; margin-right: 8px; 
-            animation: blink 1.5s infinite; 
+        .logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
+        
+        /* 分类筛选器 */
+        .filter-bar {
+            padding: 15px 25px; display: flex; gap: 10px; flex-wrap: wrap;
+            background: rgba(22, 27, 34, 0.5);
         }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-        #main-chart { width: 100vw; height: calc(100vh - 70px); }
+        .cat-btn {
+            background: #21262d; border: 1px solid #30363d; color: #8b949e;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: 0.3s;
+        }
+        .cat-btn:hover { border-color: var(--accent-color); color: #fff; }
+        .cat-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); box-shadow: 0 0 10px rgba(0,200,83,0.3); }
+
+        /* 图表容器 */
+        #chart-container { width: 100%; height: calc(100vh - 140px); min-height: 400px; }
+        
+        .loading-mask { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #8b949e; }
     </style>
 </head>
 <body>
 
-    <div class="nav">
-        <div class="brand">YMTEA LABS | 全球商贸脉动</div>
-        <div class="status-tag"><span class="status-dot"></span>LIVE DATA 2026</div>
-    </div>
+    <header class="header">
+        <div class="logo">YMTEA CLOUD RADAR</div>
+        <div style="font-size: 0.8rem; color: #8b949e;">数据来源：Cloudflare Radar API (Real-time)</div>
+    </header>
 
-    <div id="main-chart"></div>
+    <nav class="filter-bar" id="category-filters">
+        <button class="cat-btn active" onclick="switchCategory('消费电子', this)">消费电子</button>
+        <button class="cat-btn" onclick="switchCategory('家居生活', this)">家居生活</button>
+        <button class="cat-btn" onclick="switchCategory('跨境电商', this)">跨境电商</button>
+        <button class="cat-btn" onclick="switchCategory('金融科技', this)">金融科技</button>
+        <button class="cat-btn" onclick="switchCategory('AI流量', this)">AI流量</button>
+    </nav>
+
+    <div id="chart-container"></div>
 
     <script>
-        // 1. 初始化 ECharts 实例
-        const chartDom = document.getElementById('main-chart');
+        const chartDom = document.getElementById('chart-container');
         const myChart = echarts.init(chartDom, 'dark');
+        let currentCat = '消费电子';
 
-        // 2. 配置与数据获取函数
-        async function fetchData() {
+        // 核心获取数据逻辑
+        async function fetchData(category) {
             try {
-                console.log("正在从 Worker 获取实时数据...");
+                myChart.showLoading({ text: '同步 Cloudflare 边缘数据...', maskColor: 'rgba(11, 15, 25, 0.7)' });
                 
-                // --- 注意：请确保下方 URL 是你部署的真实 Worker 地址 ---
-                const workerUrl = 'https://gl.asasasxzc.workers.dev'; 
-                
-                const res = await fetch(workerUrl, {
-                    headers: {
-                        // 如果你开启了 KV 校验，请确保 Token 正确
-                        'Authorization': 'Bearer test_token_888' 
-                    }
+                // 请求时带上 category 参数，Worker 需根据此参数执行 D1 查询
+                const res = await fetch(`https://gl.asasasxzc.workers.dev?category=${encodeURIComponent(category)}`, {
+                    headers: { 'Authorization': 'Bearer test_token_888' }
                 });
 
-                if (!res.ok) {
-                    throw new Error(`服务器响应异常: ${res.status}`);
-                }
-
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                console.log("成功接收数据:", data);
 
-                // 如果数据库没数据，显示等待状态
                 if (!data || data.length === 0) {
-                    myChart.showLoading({ 
-                        text: '数据库暂无数据\n请在 D1 中执行 INSERT',
-                        color: '#00c853',
-                        textColor: '#fff',
-                        maskColor: 'rgba(11, 15, 25, 0.8)'
-                    });
+                    showEmpty();
                     return;
                 }
 
-                myChart.hideLoading();
-
-                // 3. ECharts 配置项
-                const option = {
-                    backgroundColor: 'transparent',
-                    title: { 
-                        text: '全品类全球搜索热度趋势', 
-                        left: 'center', 
-                        top: 20,
-                        textStyle: { color: '#ffffff', fontWeight: 'normal' } 
-                    },
-                    tooltip: { 
-                        trigger: 'axis',
-                        backgroundColor: '#161b22',
-                        borderColor: '#30363d',
-                        textStyle: { color: '#fff' }
-                    },
-                    grid: { left: '5%', right: '5%', bottom: '10%', containLabel: true },
-                    xAxis: { 
-                        type: 'category', 
-                        // 处理时间戳显示格式 (例如: 14:30)
-                        data: data.map(i => (i.timestamp && i.timestamp.includes('T')) ? i.timestamp.split('T')[1].slice(0, 5) : 'N/A'),
-                        axisLine: { lineStyle: { color: '#30363d' } },
-                        axisLabel: { color: '#8b949e' }
-                    },
-                    yAxis: { 
-                        type: 'value',
-                        splitLine: { lineStyle: { color: '#30363d' } },
-                        axisLabel: { color: '#8b949e' }
-                    },
-                    series: [{
-                        name: '搜索指数',
-                        data: data.map(i => i.score),
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 8,
-                        lineStyle: { width: 3, color: '#00c853' },
-                        itemStyle: { color: '#00c853', borderColor: '#fff', borderWidth: 2 },
-                        areaStyle: { 
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                { offset: 0, color: 'rgba(0, 200, 83, 0.4)' },
-                                { offset: 1, color: 'rgba(0, 200, 83, 0)' }
-                            ])
-                        }
-                    }]
-                };
-
-                myChart.setOption(option);
-
+                renderChart(data, category);
             } catch (err) {
-                console.error("前端执行报错:", err);
-                myChart.showLoading({ 
-                    text: '加载失败: ' + err.message, 
-                    color: '#ff4444', 
-                    textColor: '#ff4444', 
-                    maskColor: 'rgba(11, 15, 25, 0.9)' 
-                });
+                console.error(err);
+                myChart.showLoading({ text: '无法联通 Cloudflare 节点: ' + err.message, textColor: '#ff4444' });
             }
         }
 
-        // 4. 运行逻辑
-        fetchData(); // 立即执行一次
-        
-        // 每一分钟自动拉取一次新数据（实现自动运行可视化）
-        const timer = setInterval(fetchData, 60000);
+        // 渲染图表
+        function renderChart(data, category) {
+            myChart.hideLoading();
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: { 
+                    trigger: 'axis', 
+                    formatter: '{b}<br/><span style="color:#00c853">●</span> {a}: {c}%' 
+                },
+                grid: { top: '10%', left: '5%', right: '5%', bottom: '10%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(i => i.timestamp ? i.timestamp.split('T')[1].slice(0, 5) : '--:--'),
+                    axisLine: { lineStyle: { color: '#30363d' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '增长指数 (%)',
+                    splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } }
+                },
+                series: [{
+                    name: category,
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    data: data.map(i => i.score),
+                    lineStyle: { width: 4, color: '#00c853' },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(0, 200, 83, 0.3)' },
+                            { offset: 1, color: 'rgba(0, 200, 83, 0)' }
+                        ])
+                    },
+                    emphasis: { lineStyle: { width: 5 } }
+                }]
+            };
+            myChart.setOption(option, true); // true 表示不合并旧配置，完全刷新
+        }
 
-        // 5. 响应式布局：当浏览器窗口大小变化时，图表自动重绘
-        window.addEventListener('resize', () => {
-            myChart.resize();
-        });
+        // 切换分类逻辑
+        function switchCategory(cat, btn) {
+            currentCat = cat;
+            // 更新按钮样式
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // 获取新数据
+            fetchData(cat);
+        }
 
+        function showEmpty() {
+            myChart.showLoading({ text: '当前分类暂无 Radar 缓存数据', textColor: '#8b949e', maskColor: 'rgba(11, 15, 25, 0.8)' });
+        }
+
+        // 初始化
+        fetchData(currentCat);
+        window.addEventListener('resize', () => myChart.resize());
+        setInterval(() => fetchData(currentCat), 60000 * 5); // 每 5 分钟同步一次
     </script>
 </body>
 </html>
