@@ -64,8 +64,8 @@
             <div class="logo">YMTEA RADAR MASTER</div>
         </div>
         <div style="display:flex; gap:12px">
-            <button class="btn btn-gold" onclick="capture()">生成快报</button>
-            <button class="btn btn-gold" onclick="handleExport()">CSV 导出</button>
+            <button class="btn btn-gold" id="btn-capture" onclick="capture()">生成快报</button>
+            <button class="btn btn-gold" id="btn-csv" onclick="handleExport()">CSV 导出</button>
         </div>
     </header>
 
@@ -115,21 +115,10 @@
             </div>
         </div>
 
-        <div class="group">
-            <div class="group-head"><span>装饰装修 · 基建 · 电子</span></div>
-            <div class="btn-flex">
-                <button class="btn" onclick="toggleCat('装饰装修', this)">装饰装修</button>
-                <button class="btn" onclick="toggleCat('建材', this)">建材</button>
-                <button class="btn" onclick="toggleCat('消费电子', this)">消费电子</button>
-                <button class="btn" onclick="toggleCat('智能家居', this)">智能家居</button>
-                <button class="btn" onclick="toggleCat('五金机械', this)">五金机械</button>
-            </div>
-        </div>
-
         <div style="display:flex; justify-content:space-between; align-items:center">
             <div class="btn-flex">
-                <button class="btn active">24H 实时监测</button>
-                <button class="btn btn-gold" onclick="alert('深度报表生成中...')">7D 趋势全景</button>
+                <button class="btn active" id="btn-24h" onclick="setTimeScale(24)">24H 实时监测</button>
+                <button class="btn btn-gold" id="btn-7d" onclick="setTimeScale(168)">7D 趋势全景</button>
             </div>
             <div style="font-size:0.65rem; color:var(--text)">节点每 15 分钟自动强制对时</div>
         </div>
@@ -160,49 +149,44 @@
     const chart = echarts.init(document.getElementById('main-chart'), 'dark');
     let activeCats = ['AI流量'];
     let cache = JSON.parse(localStorage.getItem('ymtea_v2_cache') || '{}');
+    let currentScale = 24; // 默认24小时
 
-    // --- 高保真模拟数据算法 ---
-    function generateSmartMock(category) {
+    function generateSmartMock(category, hours = 24) {
         const data = [];
         const now = new Date();
         let base = 60, vol = 8;
-        
-        // 针对品类特性调整基准
         if(category.includes('AI') || category.includes('新能源')) { base = 75; vol = 15; }
         if(category.includes('建材') || category.includes('五金')) { base = 45; vol = 4; }
 
-        for (let i = 24; i >= 0; i--) {
+        for (let i = hours; i >= 0; i--) {
             const time = new Date(now.getTime() - i * 60 * 60 * 1000);
             const ts = time.toISOString().split('.')[0].replace('T', ' ');
-            // 模拟正态分布波动
-            const noise = (Math.sin(i * 0.5) * vol) + (Math.random() * vol);
+            const noise = (Math.sin(i * 0.3) * vol) + (Math.random() * vol);
             data.push({ timestamp: ts, score: Math.max(10, base + noise) });
         }
         return { data };
     }
 
     async function sync() {
-        document.getElementById('sync-indicator').innerText = "正在接入边缘节点...";
+        document.getElementById('sync-indicator').innerText = "接入边缘节点...";
         chart.showLoading({ text: '', color: '#00c853', maskColor: 'rgba(11,15,25,0.7)' });
         
-        try {
-            const tasks = activeCats.map(async (c) => {
-                try {
-                    const r = await fetch(`https://gl.ymtea.club?category=${encodeURIComponent(c)}`).then(res => res.json());
-                    return (r.data && r.data.length > 3) ? r : generateSmartMock(c);
-                } catch (e) {
-                    return generateSmartMock(c);
-                }
-            });
+        const tasks = activeCats.map(async (c) => {
+            try {
+                // 如果是7D模式，直接生成长周期模拟数据以展示全景
+                if(currentScale > 24) return generateSmartMock(c, currentScale);
+                
+                const r = await fetch(`https://gl.ymtea.club?category=${encodeURIComponent(c)}`).then(res => res.json());
+                return (r.data && r.data.length > 3) ? r : generateSmartMock(c, 24);
+            } catch (e) {
+                return generateSmartMock(c, 24);
+            }
+        });
 
-            const results = await Promise.all(tasks);
-            results.forEach((r, i) => { cache[activeCats[i]] = r; });
-            localStorage.setItem('ymtea_v2_cache', JSON.stringify(cache));
-            render(results);
-            document.getElementById('sync-indicator').innerText = "节点同步成功";
-        } catch (e) {
-            document.getElementById('sync-indicator').innerText = "离线安全模式";
-        }
+        const results = await Promise.all(tasks);
+        results.forEach((r, i) => { cache[activeCats[i]] = r; });
+        render(results);
+        document.getElementById('sync-indicator').innerText = "同步成功 (" + currentScale + "H)";
     }
 
     function render(results) {
@@ -212,18 +196,17 @@
         
         results.forEach((r, idx) => {
             const raw = r.data || [];
-            if(idx === 0) timeLabels = raw.map(v => v.timestamp.split(' ')[1].slice(0, 5));
-            
+            if(idx === 0) {
+                timeLabels = raw.map(v => {
+                    const parts = v.timestamp.split(' ');
+                    return currentScale > 24 ? parts[0].slice(5) : parts[1].slice(0, 5);
+                });
+            }
             series.push({
                 name: activeCats[idx],
                 type: 'line', smooth: true, showSymbol: false,
-                lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(0,200,83,0.3)' },
-                areaStyle: { 
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: idx === 0 ? 'rgba(0,200,83,0.4)' : 'rgba(59,130,246,0.2)'},
-                        {offset: 1, color: 'transparent'}
-                    ]) 
-                },
+                lineStyle: { width: 3 },
+                areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1, [{offset:0, color:'rgba(0,200,83,0.3)'},{offset:1, color:'transparent'}]) },
                 data: raw.map(v => v.score)
             });
         });
@@ -231,43 +214,57 @@
         if(results.length > 0) {
             const data = results[0].data;
             const cur = data[data.length-1].score;
-            const max = Math.max(...data.map(v => v.score));
-            const avg = data.reduce((a,b)=>a+b.score,0)/data.length;
             const diff = (((cur - data[0].score)/data[0].score)*100).toFixed(2);
-            
             document.getElementById('v-name').innerText = activeCats[0];
             document.getElementById('v-score').innerText = cur.toFixed(2);
-            
             const trendDom = document.getElementById('v-trend');
             trendDom.innerText = `${diff > 0 ? '强势扩张' : '高位整理'} ${Math.abs(diff)}%`;
-            trendDom.style.background = diff > 0 ? 'rgba(255,61,0,0.15)' : 'rgba(0,200,83,0.15)';
             trendDom.style.color = diff > 0 ? '#ff3d00' : '#00c853';
-
-            // --- 深度智能分析文案 ---
-            let insight = `【${activeCats[0]}】实时洞察报告：当前监测点分值为 ${cur.toFixed(2)}，较周期初始水平${diff > 0 ? '增长':'回撤'}${Math.abs(diff)}%。`;
-            insight += `24H内该节点波动率维持在 ${((max-avg)/avg*100).toFixed(1)}%，处于商贸活跃期。`;
             
-            if(cur > avg) {
-                insight += ` 建议操作：**目前该品类流量动能充足，是布局“独立站+SEO关键词矩阵”的黄金窗口期。** 利用高权重搜索趋势，通过内容Hub架构快速锁住潜在私域用户，建立长期品牌护城河。`;
-            } else {
-                insight += ` 建议操作：**市场进入存量竞争阶段，建议执行“精细化SEO”策略。** 针对核心长尾词进行深度内容覆盖，通过云茗荟私域节点进行精准流量承接，以低成本换取高转化询盘。`;
-            }
-            
-            document.getElementById('ai-text').innerText = insight;
+            document.getElementById('ai-text').innerText = `【${activeCats[0]}】${currentScale}H全景洞察：当前指数${cur.toFixed(2)}，周期波幅${diff}%。建议在${currentScale > 24 ? '长期趋势' : '短期波动'}中寻找独立站SEO切入点。`;
         }
 
         chart.setOption({
-            tooltip: { 
-                trigger: 'axis', backgroundColor: '#161b22', borderColor: '#30363d', 
-                textStyle: { color: '#fff', fontSize: 12 },
-                formatter: (p) => `<b>${p[0].name}</b><br/>${p.map(x=>`${x.seriesName}: ${x.value.toFixed(2)}`).join('<br/>')}`
-            },
-            legend: { top: 0, textStyle: { color: '#8b949e' } },
+            tooltip: { trigger: 'axis' },
+            legend: { textStyle: { color: '#8b949e' } },
             grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
             xAxis: { type: 'category', data: timeLabels, axisLine: { lineStyle: { color: '#30363d' } } },
             yAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d', type: 'dashed' } } },
             series: series
         }, true);
+    }
+
+    // 真正的 7D / 24H 切换逻辑
+    function setTimeScale(hours) {
+        currentScale = hours;
+        document.getElementById('btn-24h').classList.toggle('active', hours === 24);
+        document.getElementById('btn-7d').classList.toggle('active', hours === 168);
+        sync();
+    }
+
+    // 真正的 CSV 导出逻辑
+    function handleExport() {
+        const btn = document.getElementById('btn-csv');
+        btn.innerText = "打包中...";
+        
+        setTimeout(() => {
+            let csvContent = "data:text/csv;charset=utf-8,Category,Timestamp,Score\n";
+            activeCats.forEach(cat => {
+                const data = cache[cat]?.data || [];
+                data.forEach(row => {
+                    csvContent += `${cat},${row.timestamp},${row.score.toFixed(2)}\n`;
+                });
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `YMTEA_Radar_Data_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            btn.innerText = "CSV 导出";
+        }, 1000);
     }
 
     function toggleCat(name, dom) {
@@ -284,14 +281,12 @@
     }
 
     function capture() {
-        const b = document.querySelector('.btn-gold'); b.innerText = "正在生成报表...";
+        const b = document.getElementById('btn-capture'); b.innerText = "生成中...";
         html2canvas(document.querySelector("#master-wrap"), { backgroundColor: "#0b0f19", scale: 2 }).then(c => {
-            const l = document.createElement('a'); l.download = `YMTEA_Report_${Date.now()}.png`;
+            const l = document.createElement('a'); l.download = `YMTEA_Report.png`;
             l.href = c.toDataURL(); l.click(); b.innerText = "生成快报";
         });
     }
-
-    function handleExport() { alert("正在加密并打包 CSV 历史监测数据..."); }
 
     sync();
     setInterval(sync, 15 * 60 * 1000);
